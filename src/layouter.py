@@ -9,7 +9,7 @@ class Layouter:
 
 
 
-    def grid_layout( self, scale: int ) -> None:
+    def grid_layout( self, scale : int = 1) -> None:
         gridSize: int = round( self.nodesNum ** ( 1 / 3 ) )
         x,y,z = 0,0,0
         for node in self.g.vs:
@@ -26,50 +26,48 @@ class Layouter:
                 y = 0
             
 
-    def spherical_layout( self, radius ):
+    def spherical_layout( self, scale : int = 1 ):
         phi = (1 + np.sqrt(5)) / 2 
         for num, node in enumerate(self.g.vs):
-           
-                   
-
-           
             theta = 2 * np.pi * (num / phi)
-            z = 1 - (2 * num / (self.nodesNum - 1))  # Map z to [-1, 1]
+            z = 1 - (2 * num / (self.nodesNum - 1))  
             x = np.sqrt(1 - z * z) * np.cos(theta)
             y = np.sqrt(1 - z * z) * np.sin(theta)
-            node["x"] = x
-            node["y"] = y
-            node["z"] = z
+            node["x"] = x * scale
+            node["y"] = y * scale
+            node["z"] = z * scale 
 
 
-
-
+    def route_edges( self ):
+        #(v1,v2) : {"start" : (x,y,z), "end" : (x,y,z)} 
+        edges = {}
+        for edge in self.g.es:  
+            source = edge.source_vertex 
+            target = edge.target_vertex 
+            x_start, y_start = source[ "x" ], source[ "y" ]
+            x_end, y_end = target[ "x" ], target[ "y" ]
+            z_start, z_end = source[ "z" ], target[ "z" ]
+            edges[ edge ] = {"start": ( x_start, y_start, z_start ), 
+                             "end": ( x_end, y_end, z_end ) }
+        return edges
 
     def draw( self ):
-        self.grid_layout( 150 )
         self.spherical_layout( 10 )
-        y_coords = [node["y"] for node in self.g.vs]
-        z_coords = [node["z"] for node in self.g.vs]
-        x_coords = [node["x"] for node in self.g.vs]
-        # Set up the figure and 3D axis
+        x_coords = [ node[ "x" ] for node in self.g.vs ] 
+        y_coords = [ node[ "y" ] for node in self.g.vs ]
+        z_coords = [ node[ "z" ] for node in self.g.vs ]
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
-
-        # Plot the nodes as points in 3D space
-        ax.scatter(x_coords, y_coords, z_coords, c="blue", marker="o")
-        for edge in self.g.es:  # Access edges using the 'es' attribute
-            source = edge.source  # Start node of the edge
-            target = edge.target  # End node of the edge
-            x_start, y_start = x_coords[source], y_coords[source]
-            x_end, y_end = x_coords[target], y_coords[target]
-            z_start, z_end = z_coords[source], z_coords[target]
-            ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end], c='black')
-        # Optional: add labels or adjust limits
+        ax.scatter( x_coords, y_coords, z_coords, c="blue", marker="o" )
+        edges = self.route_edges()
+        for edge in edges.values():
+            start = edge[ "start" ]
+            end = edge[ "end" ]
+            plt.plot((start[0], end[0]), (start[1], end[1]),(start[2], end[2]), label="Line")
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
         ax.set_title("3D Node Layout")
-
         plt.show()
 
 
