@@ -57,9 +57,15 @@ class Layouter:
 
 
     def export( self ):
-        data = {}
+        data = { "nodes":{}, "edges":{} }
         for node in self.g.vs:
-            data[ node.index ] = { "coords": ( node["x"], node["y"], node["z"] ) }
+            data[ "nodes" ][ node.index ] = { "coords": ( node[ "x" ], node[ "y" ], node[ "z" ] ) }
+
+        edges = self.route_edges()
+        for edge in edges.keys():
+            data[ "edges" ][ edge.index ] = edges[ edge ]
+
+
         with open("graph_data.json", "w") as f:
             json.dump(data, f, indent=4)
     
@@ -113,7 +119,7 @@ if __name__ == "__main__":
                        (38, 40), (39, 49), (39, 50), (40, 42), (40, 49), (43, 47), 
                        (44, 48)]
 )
-    l.spherical_layout()
+    l.grid_layout()
     l.draw()
     l.export()
 
