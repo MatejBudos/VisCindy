@@ -1,6 +1,7 @@
 import igraph as ig
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 class Layouter:
     def __init__( self, nodesNum, edges ) -> None:
         self.nodesNum = nodesNum
@@ -13,9 +14,9 @@ class Layouter:
         gridSize: int = round( self.nodesNum ** ( 1 / 3 ) )
         x,y,z = 0,0,0
         for node in self.g.vs:
-            node["x"] = scale * x
-            node["y"] = scale * y
-            node["z"] = scale * z
+            node[ "x" ] = scale * x
+            node[ "y" ] = scale * y
+            node[ "z" ] = scale * z
             x += 1
             if x % gridSize == 0:
                 y += 1
@@ -26,16 +27,19 @@ class Layouter:
                 y = 0
             
 
-    def spherical_layout( self, scale : int = 1 ):
-        phi = (1 + np.sqrt(5)) / 2 
-        for num, node in enumerate(self.g.vs):
-            theta = 2 * np.pi * (num / phi)
-            z = 1 - (2 * num / (self.nodesNum - 1))  
-            x = np.sqrt(1 - z * z) * np.cos(theta)
-            y = np.sqrt(1 - z * z) * np.sin(theta)
-            node["x"] = x * scale
-            node["y"] = y * scale
-            node["z"] = z * scale 
+    def spherical_layout( self, scale : int = 10 ):
+        phi = ( 1 + np.sqrt( 5 ) ) / 2 
+        for node in self.g.vs:
+            if node.index == 50:
+                print('bla')
+            theta = 2 * np.pi * ( node.index / phi )
+            z = 1 - ( 2 * node.index / ( self.nodesNum ) )  
+            root = 1 - z * z
+            x = np.sqrt( root ) * np.cos( theta )
+            y = np.sqrt( root ) * np.sin( theta )
+            node[ "x" ] = x * scale
+            node[ "y" ] = y * scale
+            node[ "z" ] = z * scale 
 
 
     def route_edges( self ):
@@ -51,8 +55,17 @@ class Layouter:
                              "end": ( x_end, y_end, z_end ) }
         return edges
 
+
+    def export( self ):
+        data = {}
+        for node in self.g.vs:
+            data[ node.index ] = { "coords": ( node["x"], node["y"], node["z"] ) }
+        with open("graph_data.json", "w") as f:
+            json.dump(data, f, indent=4)
+    
+        return data
+
     def draw( self ):
-        self.spherical_layout( 10 )
         x_coords = [ node[ "x" ] for node in self.g.vs ] 
         y_coords = [ node[ "y" ] for node in self.g.vs ]
         z_coords = [ node[ "z" ] for node in self.g.vs ]
@@ -100,7 +113,9 @@ if __name__ == "__main__":
                        (38, 40), (39, 49), (39, 50), (40, 42), (40, 49), (43, 47), 
                        (44, 48)]
 )
+    l.spherical_layout()
     l.draw()
+    l.export()
 
   
    
