@@ -95,7 +95,3 @@ api.add_resource( Layouter, "/api/<string:layout_type>" )
 
 if __name__ == "__main__":
     app.run( debug = True )
-  
-
-  
-   
