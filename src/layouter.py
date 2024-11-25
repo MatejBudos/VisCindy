@@ -9,11 +9,16 @@ app = Flask( __name__ )
 api = Api( app )
 
 class Layouter( Resource ):
-    def __init__( self, vertices = [], edges = [] ) -> None:
-        self.g = ig.Graph()
-        self.g.add_vertices( vertices )
-        self.g.add_edges( edges )
-        self.nodesNum = self.g.vcount()
+    def __init__( self, graph : ig.Graph = None) -> None:
+        self.g = None
+        self.layout_functions = None
+        if graph:
+            self.set_graph( graph )
+        
+       
+
+    def set_graph( self, graph : ig.Graph  ) -> None:
+        self.g = graph
         self.layout_functions = { 
         "grid": self.g.layout_grid_3d,
         "sphere": self.g.layout_sphere,
@@ -21,14 +26,13 @@ class Layouter( Resource ):
         "fr": self.g.layout_fruchterman_reingold_3d,
         "random": self.g.layout_random_3d
         }
-
-    def set_graph( self, vertices, edges ) -> None:
-        self.g.clear()
-        self.g.add_vertices( vertices )
-        self.g.add_edges( edges )
+      
 
     def layout( self, layout_type : str = "random") -> None:
-        layout_function = self.layout_functions.get(layout_type, self.g.layout_random_3d)
+        try:
+            layout_function = self.layout_functions[layout_type]
+        except KeyError:
+            raise KeyError(f"Layout {layout_type} does not exist")
         layout = layout_function()
         for index, coord in enumerate( layout ):
             self.g.vs[ index ][ "coords" ] = coord
@@ -39,8 +43,8 @@ class Layouter( Resource ):
         #(v1,v2) : {"start" : (x,y,z), "end" : (x,y,z)} 
         edges = {}
         for edge in self.g.es:  
-            source = edge.source_vertex 
-            target = edge.target_vertex 
+            source = edge.source_vertex
+            target = edge.target_vertex
             edges[ edge.index ] = { "start": source[ "coords" ], 
                                     "end": target[ "coords" ] }
         return edges
@@ -59,7 +63,7 @@ class Layouter( Resource ):
     def export( self ):
         data = { "nodes":{}, "edges":{} }
         for node in self.g.vs:
-            data[ "nodes" ][ node.index ] = { "coords": node["coords"] }
+            data[ "nodes" ][ node.name ] = { "coords": node["coords"] }
        
         data[ "edges" ] = self.route_edges()
         #with open("graph_data.json", "w") as f:
@@ -70,10 +74,11 @@ class Layouter( Resource ):
     def draw( self, draw_edges = True ):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
-        x_coords, y_coords, z_coords = zip( *[ node[ "coords" ] for node in self.g.vs ] )
-        ax.scatter( x_coords, y_coords, z_coords, c="blue", marker="o" )
-        for idx, (x, y, z) in enumerate(zip(x_coords, y_coords, z_coords)):
-            ax.text(x, y, z, str(idx), color='red', fontsize=10)
+
+        for vertex in self.g.vs:
+            x, y, z = vertex["coords"]
+            ax.scatter( x, y, z, c="blue", marker="o" )
+            ax.text(x, y, z, vertex["name"], color='red', fontsize=10)
         if draw_edges:
             edges = self.route_edges()
             for edge in edges.values():
