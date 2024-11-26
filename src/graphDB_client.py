@@ -1,12 +1,15 @@
 
 from neo4j import GraphDatabase
 import json
-
+from flask import request
+from flask_restful import Resource
 import igraph as ig
 
-class DBClient:
-    def __init__( self, uri : str, auth: tuple ) -> None:
-        self.driver = self.connect( uri, auth )
+class DBClient(Resource):
+    def __init__( self ) -> None:
+        with open('authentification.json', 'r') as file:
+            data = json.load(file)
+            self.driver = self.connect( data["URI"], (data["Username"],data["NEO4J_PASSWORD"]) )
       
     def connect( self, uri, auth ) -> bool:
         driver = GraphDatabase.driver(uri, auth=auth)
@@ -25,24 +28,39 @@ class DBClient:
             graph.add_edge( str(record['source']), str(record['target']) )
         return graph
         
-    def vertices_to_Igraph( self, records : dict, graph : ig.Graph  ) -> ig.Graph:
+    def vertices_to_Igraph( self, records : dict ) -> ig.Graph:
+        graph = ig.Graph()
         for record in records:
             graph.add_vertex( name = str(record["id"]) )
         return graph
    
+    def post(self):
+        data = request.get_json()
+        query = data.get("query")
+        records = self.execute_query(query)
+        return {"message": "Query executed successfully", "data": records}, 200
+    
+
     
 if __name__ == "__main__":
     with open('authentification.json', 'r') as file:
         data = json.load(file)
-    db = DBClient( data["URI"], (data["Username"],data["NEO4J_PASSWORD"]))
-    res2 = db.execute_query( "MATCH (n)\
-                            RETURN Id(n) as id;")
-    graph = ig.Graph()
-    graph = db.vertices_to_Igraph( res2, graph )
-    res = db.execute_query( "MATCH (n)-[r]->(m)\
-                            RETURN \
-                            Id(n) AS source, \
-                            Id(m) AS target, \
-                            type(r) AS relationship")
-    graph = db.edges_to_Igraph( res, graph )
-    print(graph)
+    db = DBClient()
+    query = "MATCH (n)\
+            OPTIONAL MATCH (n)-[r]->(m)\
+            WITH\
+            Id(n) AS id,\
+            collect(CASE\
+                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r)}\
+                ELSE null\
+            END) AS edges\
+            RETURN\
+            id,\
+            [edge IN edges WHERE edge IS NOT NULL] AS edges;\
+            "
+    res = db.execute_query( query )
+        
+  
+    for r in res:
+        print(r)
+    

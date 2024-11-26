@@ -1,33 +1,23 @@
-from flask import Flask
-from flask_restful import Api, Resource, reqparse
+from flask import Flask, request
+from flask_restful import Api, reqparse
 from graphDB_client import DBClient
 from layouter import Layouter
-import json
+from graphDB_client import DBClient
+from layouter import Layouter
 
 app = Flask( __name__ )
 api = Api( app )
 query_args = reqparse.RequestParser()
 query_args.add_argument("query", type = str, help = "No query provided")
 
-class APIAuraDB(Resource):
-    def __init__(self) -> None:
-        with open('authentification.json', 'r') as file:
-            data = json.load(file)
-            self.client = DBClient( data["URI"], (data["Username"],data["NEO4J_PASSWORD"]))
 
-        self.layouter = Layouter()
-        self.graph = None
+#layouter_args = reqparse.RequestParser()
+#layouter_args.add_argument("layout_type", type = str, help = "No layout type provided")
+#layouter_args.add_argument("nodes", type = str, help = "No nodes provided")
 
 
-    def get( self, layout_type : str ):
-        self.layouter.layout( layout_type )
-
-    def put( self, query : str ):
-        args = query_args.parse_args()
-
-
-api.add_resource( APIAuraDB, "/api/query", "/api/<string:layout_type>" )
-
+api.add_resource( DBClient, "/api/query" )
+api.add_resource( Layouter, "/api/<string:layout_type>" )
 
 
 
