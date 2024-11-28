@@ -11,9 +11,10 @@ public class ReadingJson
         Dictionary<string, NodeObject> nodesDictionary = new Dictionary<string, NodeObject>();
 
         var data = JsonConvert.DeserializeObject<JObject>(jsonContent);
-        if (data.ContainsKey("nodes"))
+        
+        if (data.ContainsKey("data"))
         {
-            if (data["nodes"] is JObject nodes)
+            if (data["data"]?["nodes"] is JObject nodes)
             {
                 foreach (var node in nodes)
                 {
@@ -30,9 +31,9 @@ public class ReadingJson
             }
         }
 
-        if (data.ContainsKey("edges"))
+        if (data.ContainsKey("data"))
         {
-            if (data["edges"] is JObject edges)
+            if (data["data"]?["edges"] is JObject edges)
             {
                 foreach (var edge in edges)
                 {

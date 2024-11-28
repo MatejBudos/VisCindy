@@ -155,7 +155,7 @@ MonoBehaviour:
   graphPrefab: {fileID: 91998886}
   spherePrefab: {fileID: 5489697641645510712, guid: a7576c2da2405e74eb9a42a620ccfc5a, type: 3}
   linePrefab: {fileID: 6183510564679563791, guid: f997761bcd91377499cc90bbbbac7b3b, type: 3}
-  apiUrl: http://127.0.0.1:5000/api/grid
+  apiUrl: ttp://127.0.0.1:5000/api/grid
 --- !u!4 &91998888
 Transform:
   m_ObjectHideFlags: 0
