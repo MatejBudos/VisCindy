@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -133,6 +133,7 @@ GameObject:
   m_Component:
   - component: {fileID: 91998888}
   - component: {fileID: 91998887}
+  - component: {fileID: 91998889}
   m_Layer: 0
   m_Name: GraphLoadManager
   m_TagString: Untagged
@@ -155,7 +156,9 @@ MonoBehaviour:
   graphPrefab: {fileID: 91998886}
   spherePrefab: {fileID: 5489697641645510712, guid: a7576c2da2405e74eb9a42a620ccfc5a, type: 3}
   linePrefab: {fileID: 6183510564679563791, guid: f997761bcd91377499cc90bbbbac7b3b, type: 3}
-  apiUrl: ttp://127.0.0.1:5000/api/grid
+  pregeneratedNodes: 50
+  pregeneratedEdges: 50
+  apiUrl: http://127.0.0.1:5000/api/
 --- !u!4 &91998888
 Transform:
   m_ObjectHideFlags: 0
@@ -171,6 +174,20 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &91998889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 91998886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2cb7711a42ca6045b22c80e2f28efb9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nodePrefab: {fileID: 5489697641645510712, guid: a7576c2da2405e74eb9a42a620ccfc5a, type: 3}
+  linePrefab: {fileID: 6183510564679563791, guid: f997761bcd91377499cc90bbbbac7b3b, type: 3}
 --- !u!1 &139026443
 GameObject:
   m_ObjectHideFlags: 0
@@ -1513,7 +1530,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83d9acc7968244a8886f3af591305bcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  activeProfile: {fileID: 11400000, guid: d06f96cfc24dc7643af0b8a0267c924f, type: 2}
+  activeProfile: {fileID: 11400000, guid: 31a611a779d3499e8e35f1a2018ca841, type: 2}
 --- !u!4 &708748545
 Transform:
   m_ObjectHideFlags: 0
