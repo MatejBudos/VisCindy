@@ -1,5 +1,8 @@
 import requests
+import time
 URL = 'http://127.0.0.1:5000/api/'
+session = requests.Session()
+
 q = "MATCH (n)\
             OPTIONAL MATCH (n)-[r]->(m)\
             WITH\
@@ -13,10 +16,26 @@ q = "MATCH (n)\
             [edge IN edges WHERE edge IS NOT NULL] AS edges;\
             "
 query = {"query":q}
-records = requests.post( URL + "query", json=query)
-print(records.json())
+query_response = session.post(URL + "query", json=query)
+
+if query_response.status_code == 200:
+    print("Query response:", query_response.json())
+else:
+    print("Query failed with status code:", query_response.status_code)
+
+response = query_response.json()
+print(response)
 
 
-layout_type = "grid" #grid, sphere, kk, fr, random
-response = requests.get( URL + layout_type) 
-print(response.json())
+layout_type = "grid"   # Options: grid, sphere, kk, fr, random
+graph = {"graph":query_response.json()["data"], "layout_type": layout_type}
+
+layout_response = session.post(URL +"layouter",json=graph)
+if layout_response.status_code == 200:
+    print("Layout response:", layout_response.json())
+else:
+    print("Layout request failed with status code:", layout_response.status_code)
+
+# Close the session
+session.close()
+
