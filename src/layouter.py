@@ -48,8 +48,8 @@ class Layouter(Resource):
 
     def post(self):
         data = request.get_json()
-        graph = data.get("graph")
-        layout_type = data.get("layout_type")
+        graph = data.get("data")
+        layout_type = "sphere"
         igraph = self.records_to_Igraph( graph )
         layout = self.layout( igraph, layout_type )
         return self.export( layout ), 200
