@@ -4,14 +4,8 @@ import numpy as np
 import json
 from flask import request
 from flask_restful import Resource
-class Layouter:
+class Layouter(Resource):
     
-    def __init__( self ) -> None:
-        self.g = None
-        
-
-        
-
     def layout( self, graph, layout_type : str = "random" ) -> None:
         layout_functions = { 
         "grid": graph.layout_grid_3d,
@@ -52,8 +46,25 @@ class Layouter:
     
         return data
 
+    def post(self):
+        data = request.get_json()
+        graph = data.get("graph")
+        layout_type = data.get("layout_type")
+        igraph = self.records_to_Igraph( graph )
+        layout = self.layout( igraph, layout_type )
+        return self.export( layout ), 200
     
-       
+    def records_to_Igraph( self, records : dict ) -> ig.Graph:
+        graph = ig.Graph()
+        edges = []
+        for record in records:
+            vertex = str(record['id'])
+            graph.add_vertex( vertex )
+            for edge in record['edges']:
+                edges.append( ( vertex, str(edge['target']) ) )
+        
+        graph.add_edges( edges )
+        return graph   
 
 
     def draw( self, draw_edges = True ):

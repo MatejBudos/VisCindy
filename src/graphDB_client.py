@@ -3,8 +3,8 @@ from neo4j import GraphDatabase
 import json
 from flask import request
 import igraph as ig
-
-class DBClient:
+from flask_restful import Resource
+class DBClient(Resource):
     def __init__( self ) -> None:
         with open('authentification.json', 'r') as file:
             data = json.load(file)
@@ -22,19 +22,13 @@ class DBClient:
             records = [record.data() for record in result]
             return records
         
-    def records_to_Igraph( self, records : dict ) -> ig.Graph:
-        graph = ig.Graph()
-        edges = []
-        for record in records:
-            vertex = str(record['id'])
-            graph.add_vertex( vertex )
-            for edge in record['edges']:
-                edges.append( ( vertex, str(edge['target']) ) )
-        
-        graph.add_edges( edges )
-        return graph
-        
     
+        
+    def post(self):
+        data = request.get_json()
+        query = data.get("query")
+        records = self.execute_query(query)
+        return {"message": "Query executed successfully", "data": records}, 200
     
 
     
