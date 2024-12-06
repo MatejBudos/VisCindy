@@ -3,3 +3,5 @@ Flask-RESTful==0.3.10
 igraph==0.11.8
 matplotlib==3.8.4
 numpy==1.26.3
+neo4j~=5.27.0
+requests~=2.32.3

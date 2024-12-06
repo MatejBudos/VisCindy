@@ -28,7 +28,7 @@ print(response)
 
 
 layout_type = "grid"   # Options: grid, sphere, kk, fr, random
-graph = {"graph":query_response.json()["data"], "layout_type": layout_type}
+graph = {"data":query_response.json()["data"], "layout_type": layout_type}
 
 layout_response = session.post(URL +"layouter",json=graph)
 if layout_response.status_code == 200:

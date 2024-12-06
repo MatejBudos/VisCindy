@@ -1,16 +1,51 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class ObjectPool : MonoBehaviour
 {
     public static ObjectPool SharedInstance;
     public GameObject nodePrefab;
     public GameObject linePrefab;
-    private Dictionary<string, Queue<GameObject>> poolDictionary = new Dictionary<string, Queue<GameObject>>();
+    public int initialNodes = 50; 
+    public int initialLines = 50;
+    public int threshold = 5;
+    public int refillAmount = 3; 
+    public GameObject container;
+    public Dictionary<string, Queue<GameObject>> poolDictionary = new Dictionary<string, Queue<GameObject>>();
+    private const string SpherePoolKey = "Nodes";
+    private const string LinePoolKey = "Lines";
 
-    void Awake()
+    private void Awake()
     {
         SharedInstance = this;
+        CreatePool(nodePrefab, initialNodes, SpherePoolKey);
+        CreatePool(linePrefab, initialLines, LinePoolKey);
+    }
+    
+    private void Update()
+    {
+        // Check if the "Nodes" pool needs refilling
+        if (poolDictionary.ContainsKey("Nodes") && poolDictionary["Nodes"].Count < threshold)
+        {
+            for (int i = 0; i < refillAmount; i++)
+            {
+                GameObject obj = Instantiate(nodePrefab, container.transform); // Use container.transform
+                obj.SetActive(false);
+                poolDictionary["Nodes"].Enqueue(obj);
+            }
+        }
+
+        // Check if the "Lines" pool needs refilling
+        if (poolDictionary.ContainsKey("Lines") && poolDictionary["Lines"].Count < threshold)
+        {
+            for (int i = 0; i < refillAmount; i++)
+            {
+                GameObject obj = Instantiate(linePrefab, container.transform); // Use container.transform
+                obj.SetActive(false);
+                poolDictionary["Lines"].Enqueue(obj);
+            }
+        }
     }
 
     public void CreatePool(GameObject prefab, int initialSize, string poolKey)
@@ -23,6 +58,13 @@ public class ObjectPool : MonoBehaviour
             {
                 GameObject obj = Instantiate(prefab);
                 obj.SetActive(false);
+
+                // Set the parent of the pooled object
+                if (container != null)
+                {
+                    obj.transform.SetParent(container.transform);
+                }
+
                 objectPool.Enqueue(obj);
             }
 
@@ -39,23 +81,26 @@ public class ObjectPool : MonoBehaviour
             return obj;
         } else
         {
-            //if empty Pull create new Line or Node
-            if (poolKey.Equals("Nodes"))
+            switch (poolKey)
             {
-                GameObject obj = Instantiate(nodePrefab);
-                return obj;
-            } else if (poolKey.Equals("Lines"))
-            {
-                GameObject obj = Instantiate(linePrefab);
-                return obj;
-            } else
-            {
-                return null;
+                //if empty Pull create new Line or Node
+                case "Nodes":
+                {
+                    GameObject obj = Instantiate(nodePrefab);
+                    return obj;
+                }
+                case "Lines":
+                {
+                    GameObject obj = Instantiate(linePrefab);
+                    return obj;
+                }
+                default:
+                    return null;
             }
         }
-
-        Debug.LogWarning($"Pool with key {poolKey} is empty or doesn't exist.");
-        return null;
+        //
+        // Debug.LogWarning($"Pool with key {poolKey} is empty or doesn't exist.");
+        // return null;
     }
 
     public void ReturnObject(GameObject obj, string poolKey)
