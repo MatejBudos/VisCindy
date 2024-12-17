@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using UnityEngine.Networking;
 
 [System.Serializable]
@@ -15,18 +18,24 @@ public class DrawGraph : MonoBehaviour
 {
     public GameObject graphPrefab;
     private int counter = 0;
-
+    private static CookieContainer CookieContainer = new CookieContainer();
+    private HttpClientHandler handler = new HttpClientHandler
+    {
+        CookieContainer = CookieContainer,
+        UseCookies = true
+    };
     public string apiUrl = "http://127.0.0.1:5000/api/";
     private Dictionary<string, NodeObject> _nodesDictionary = new Dictionary<string, NodeObject>();
 
     private bool _loadedFlag = true;
+    private string responseData1;
 
     private const string SPHERE_POOL_KEY = "Nodes";
     private const string LINE_POOL_KEY = "Lines";
 
     private void Start()
     {
-        StartCoroutine(SendToLayouterApi(""));
+        // StartCoroutine(SendToLayouterApi(""));
     }
 
     void Update()
@@ -46,47 +55,60 @@ public class DrawGraph : MonoBehaviour
 
     public void CreateGraphFromAPI()
     {
-        StartCoroutine(GetGraphData());
+       var jozo =  StartCoroutine(GetGraphData());
+        Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
+        foreach (var node in ReadingJson.ReadJson(responseData1))
+        {
+            Debug.Log("vrojor " + counter + " " + node.Key);
+            _nodesDictionary.Add(counter.ToString(), node.Value);
+            forAdd.Add(counter.ToString(), node.Value);
+            counter++;
+        }
+
+        _loadedFlag = true;
+        VisualizeGraph(forAdd);
     }
 
-    IEnumerator GetGraphData()
+    private IEnumerator GetGraphData()
     {
-        string q = @"MATCH (n)
-            OPTIONAL MATCH(n)-[r]->(m)
-            WITH
-            Id(n) AS id,
-            collect(CASE
-                WHEN m IS NOT NULL THEN { source: Id(n), target: Id(m), relationship: type(r)}
-                ELSE NULL
-            END) AS edges
-            RETURN
-            id,
-            [edge IN edges WHERE edge IS NOT NULL] AS edges;";
-        QueryPayload queryPayload = new QueryPayload { query = q };
-        string jsonPayload = JsonUtility.ToJson(queryPayload);
-
-        using (UnityWebRequest request = new UnityWebRequest(apiUrl + "query", "POST"))
+        using (HttpClient client = new HttpClient(new HttpClientHandler
+               {
+                   CookieContainer = CookieContainer,
+                   UseCookies = true
+               }))
         {
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
+            // First request to /graph/1
+            var response1 = client.GetAsync(apiUrl + "graph/1");
+            yield return response1; // Wait for the response
 
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
+            if (response1.Result.IsSuccessStatusCode)
             {
-                Debug.Log("Query Response: " + request.downloadHandler.text);
-
-                // Pass the response JSON to the next API
-                StartCoroutine(SendToLayouterApi(request.downloadHandler.text));
+                responseData1 = response1.Result.Content.ReadAsStringAsync().ToString();
+                yield return responseData1; // Wait for the data
+                Debug.Log(response1);
             }
             else
             {
-                Debug.LogError("Query API Error: " + request.error);
+                Console.WriteLine($"Error: {response1.Result.StatusCode} - {response1.Result.ReasonPhrase}");
             }
+
+            // Second request to /layouter/grid (if needed) - uncomment if you need this
+            // var response2 = client.GetAsync(apiUrl + "layouter/grid");
+            // yield return response2;
+
+            // if (response2.Result.IsSuccessStatusCode)
+            // {
+            //     var responseData2 = response2.Result.Content.ReadAsStringAsync();
+            //     yield return responseData2;
+            //     // Use responseData2 here
+            // }
+            // else
+            // {
+            //     Console.WriteLine($"Error: {response2.Result.StatusCode} - {response2.Result.ReasonPhrase}");
+            // }
         }
     }
+
 
     private IEnumerator SendToLayouterApi(string jsonResponse)
     {
