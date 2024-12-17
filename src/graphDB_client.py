@@ -57,18 +57,6 @@ if __name__ == "__main__":
     with open('authentification.json', 'r') as file:
         data = json.load(file)
     db = DBClient()
-    query = "MATCH (n)\
-            OPTIONAL MATCH (n)-[r]->(m)\
-            WITH\
-            Id(n) AS id,\
-            collect(CASE\
-                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r)}\
-                ELSE null\
-            END) AS edges\
-            RETURN\
-            id,\
-            [edge IN edges WHERE edge IS NOT NULL] AS edges;\
-            "
     res = db.get( 2 )
     
     print(res)
