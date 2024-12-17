@@ -2,7 +2,7 @@ import igraph as ig
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from flask import request
+from flask import request, session
 from flask_restful import Resource
 class Layouter(Resource):
     
@@ -45,15 +45,16 @@ class Layouter(Resource):
         #   json.dump(data, f, indent=3)
     
         return data
-
-    def post(self):
-        data = request.get_json()
-        graph = data.get("data")
-        layout_type = "sphere"
-        igraph = self.records_to_Igraph( graph )
-        layout = self.layout( igraph, layout_type )
-        return self.export( layout ), 200
     
+    def get( self, layout_type : str ):
+        if session.get("records", None ) is None:
+            return {"Message":"Did not query graph"}, 500
+        
+        graph = self.records_to_Igraph( session["records"])
+        graph = self.layout( graph, layout_type )
+        return self.export( graph ), 200
+        
+
     def records_to_Igraph( self, records : dict ) -> ig.Graph:
         graph = ig.Graph()
         edges = []
@@ -67,11 +68,11 @@ class Layouter(Resource):
         return graph   
 
 
-    def draw( self, draw_edges = True ):
+    def draw( self, graph, draw_edges = True ):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
 
-        for vertex in self.g.vs:
+        for vertex in graph.vs:
             x, y, z = vertex["coords"]
             ax.scatter( x, y, z, c="blue", marker="o" )
             ax.text(x, y, z, vertex["name"], color='red', fontsize=10)
