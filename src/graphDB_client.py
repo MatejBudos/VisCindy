@@ -44,7 +44,7 @@ class DBClient(Resource):
         if not records:
             return {}, 500
         session["records"] = records
-        session["graphId"] = graphId 
+        session["graphId"] = graphId
         l = Layouter()
         graph = l.records_to_Igraph( records )
         graph = l.layout( graph )
