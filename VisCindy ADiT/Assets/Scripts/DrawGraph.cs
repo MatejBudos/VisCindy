@@ -29,9 +29,13 @@ public class DrawGraph : MonoBehaviour
 
     private bool _loadedFlag = true;
     private string _responseData1;
+    
+    private List<GameObject> activeNodes = new List<GameObject>(); 
+    private List<GameObject> activeEdges = new List<GameObject>();
 
     private const string SPHERE_POOL_KEY = "Nodes";
     private const string LINE_POOL_KEY = "Lines";
+    
     
 
     void Update()
@@ -51,9 +55,32 @@ public class DrawGraph : MonoBehaviour
 
     public void CreateGraphFromAPI()
     {
+        ResetGraph();
         StartCoroutine(ProcessGraphData()); 
     }
 
+    public void CreateGraphLayout(string layout)
+    {
+        ResetGraph();
+        StartCoroutine(ProcessGraphDataLayout(layout));
+    }
+
+    private IEnumerator ProcessGraphDataLayout(string layout)
+    {
+        yield return StartCoroutine(LayoutGraph(layout));
+
+        Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
+        foreach (var node in ReadingJson.ReadJson(_responseData1))
+        {
+            _nodesDictionary.Add(node.Key, node.Value);
+            forAdd.Add(node.Key, node.Value);
+            _counter++;
+        }
+
+        _loadedFlag = true;
+        VisualizeGraph(forAdd);
+    }
+    
     private IEnumerator ProcessGraphData()
     {
         yield return StartCoroutine(GetGraphData());
@@ -61,8 +88,8 @@ public class DrawGraph : MonoBehaviour
         Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
         foreach (var node in ReadingJson.ReadJson(_responseData1))
         {
-            _nodesDictionary.Add(_counter.ToString(), node.Value);
-            forAdd.Add(_counter.ToString(), node.Value);
+            _nodesDictionary.Add(node.Key, node.Value);
+            forAdd.Add(node.Key, node.Value);
             _counter++;
         }
 
@@ -79,13 +106,12 @@ public class DrawGraph : MonoBehaviour
                }))
         {
             var response1 = client.GetAsync(apiUrl + "graph/1");
-            yield return response1; // Wait for the response
+            yield return response1;
 
             if (response1.Result.IsSuccessStatusCode)
             {
                 _responseData1 = response1.Result.Content.ReadAsStringAsync().Result;
-                Debug.Log("API Response: " + _responseData1);
-                yield return _responseData1; // Wait for the data
+                yield return _responseData1;
             }
             else
             {
@@ -106,9 +132,11 @@ public class DrawGraph : MonoBehaviour
             if (sphere != null)
             {
                 sphere.SetActive(true);
+                sphere.name = node.Key;
                 sphere.transform.position = new Vector3(node.Value.x, node.Value.y, node.Value.z);
                 sphere.transform.SetParent(graphPrefab.transform);
                 _nodesDictionary[node.Key].UInode = sphere;
+                activeNodes.Add(sphere);
             }
             else
             {
@@ -125,9 +153,16 @@ public class DrawGraph : MonoBehaviour
                     GameObject edge = linePool.Dequeue();
                     edge.SetActive(true);
                     edge.transform.SetParent(graphPrefab.transform);
+
+                    // Reset Line Renderer positions:
+                    LineRenderer lr = edge.GetComponent<LineRenderer>(); 
+                    lr.positionCount = 0; 
+                    lr.positionCount = 2; 
+
                     if (!_nodesDictionary[node.Key].UIedges.ContainsKey(targetNode))
                     {
                         _nodesDictionary[node.Key].UIedges.Add(targetNode, edge);
+                        activeEdges.Add(edge);
                     }
                 }
                 else
@@ -137,24 +172,44 @@ public class DrawGraph : MonoBehaviour
             }
         }
     }
+    
+    public IEnumerator LayoutGraph(string layoutType)
+    {
+        using (HttpClient client = new HttpClient(new HttpClientHandler
+               {
+                   CookieContainer = CookieContainer,
+                   UseCookies = true
+               }))
+        {
+            var response1 = client.GetAsync(apiUrl + "layouter/" + layoutType);
+            yield return response1;
+
+            if (response1.Result.IsSuccessStatusCode)
+            {
+                _responseData1 = response1.Result.Content.ReadAsStringAsync().Result;
+                yield return _responseData1;
+            }
+            else
+            {
+                Console.WriteLine($"Error: {response1.Result.StatusCode} - {response1.Result.ReasonPhrase}");
+            }
+
+        }
+    }
 
     public void ResetGraph()
     {
-        foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
+        _nodesDictionary = new Dictionary<string, NodeObject>();
+        foreach (GameObject node in activeNodes)
         {
-            if (node.Value.UInode != null)
-            {
-                ObjectPool.SharedInstance.ReturnObject(node.Value.UInode, SPHERE_POOL_KEY);
-            }
-
-            foreach (KeyValuePair<string, GameObject> edge in node.Value.UIedges)
-            {
-                ObjectPool.SharedInstance.ReturnObject(edge.Value, LINE_POOL_KEY);
-            }
-            node.Value.UIedges.Clear();
+            ObjectPool.SharedInstance.ReturnObject(node, SPHERE_POOL_KEY);
         }
-
-        _nodesDictionary.Clear();
-        _loadedFlag = false;
+        activeNodes.Clear();
+        
+        foreach (GameObject edge in activeEdges)
+        {
+            ObjectPool.SharedInstance.ReturnObject(edge, LINE_POOL_KEY);
+        }
+        activeEdges.Clear(); 
     }
 }
