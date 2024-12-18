@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 [System.Serializable]
 public class QueryPayload
@@ -14,11 +15,19 @@ public class QueryPayload
     public string query;
 }
 
+
 public class DrawGraph : MonoBehaviour
 {
     public GameObject graphPrefab;
+    public GameObject AddNodePrefab;
+    public GameObject UndoPrefab;
+    public GameObject RedoPrefab;
     private int _counter = 0;
+    private Queue<GameObject> linePool;
+    private Queue<GameObject> spherePool;
     private static readonly CookieContainer CookieContainer = new CookieContainer();
+    private Stack<Command> undo = new Stack<Command>();
+    private Stack<Command> redo = new Stack<Command>();
     private HttpClientHandler _handler = new HttpClientHandler
     {
         CookieContainer = CookieContainer,
@@ -29,14 +38,22 @@ public class DrawGraph : MonoBehaviour
 
     private bool _loadedFlag = true;
     private string _responseData1;
-    
-    private List<GameObject> activeNodes = new List<GameObject>(); 
+
+    private List<GameObject> activeNodes = new List<GameObject>();
     private List<GameObject> activeEdges = new List<GameObject>();
 
     private const string SPHERE_POOL_KEY = "Nodes";
     private const string LINE_POOL_KEY = "Lines";
-    
-    
+
+    private void Start()
+    {
+        Button addButton = AddNodePrefab.GetComponent<Button>();
+        addButton.onClick.AddListener(() => AddNode());
+        Button undoButton = UndoPrefab.GetComponent<Button>();
+        undoButton.onClick.AddListener(() => Undo());
+        Button redoButton = RedoPrefab.GetComponent<Button>();
+        redoButton.onClick.AddListener(() => Redo());
+    }
 
     void Update()
     {
@@ -56,7 +73,7 @@ public class DrawGraph : MonoBehaviour
     public void CreateGraphFromAPI()
     {
         ResetGraph();
-        StartCoroutine(ProcessGraphData()); 
+        StartCoroutine(ProcessGraphData());
     }
 
     public void CreateGraphLayout(string layout)
@@ -80,7 +97,7 @@ public class DrawGraph : MonoBehaviour
         _loadedFlag = true;
         VisualizeGraph(forAdd);
     }
-    
+
     private IEnumerator ProcessGraphData()
     {
         yield return StartCoroutine(GetGraphData());
@@ -100,10 +117,10 @@ public class DrawGraph : MonoBehaviour
     private IEnumerator GetGraphData()
     {
         using (HttpClient client = new HttpClient(new HttpClientHandler
-               {
-                   CookieContainer = CookieContainer,
-                   UseCookies = true
-               }))
+        {
+            CookieContainer = CookieContainer,
+            UseCookies = true
+        }))
         {
             var response1 = client.GetAsync(apiUrl + "graph/1");
             yield return response1;
@@ -123,9 +140,9 @@ public class DrawGraph : MonoBehaviour
 
     private void VisualizeGraph(Dictionary<string, NodeObject> forAdd)
     {
-        Queue<GameObject> spherePool = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY];
-        Queue<GameObject> linePool = ObjectPool.SharedInstance.poolDictionary[LINE_POOL_KEY];
-        
+        spherePool = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY];
+        linePool = ObjectPool.SharedInstance.poolDictionary[LINE_POOL_KEY];
+
         foreach (KeyValuePair<string, NodeObject> node in forAdd)
         {
             GameObject sphere = ObjectPool.SharedInstance.GetObject(SPHERE_POOL_KEY);
@@ -155,9 +172,9 @@ public class DrawGraph : MonoBehaviour
                     edge.transform.SetParent(graphPrefab.transform);
 
                     // Reset Line Renderer positions:
-                    LineRenderer lr = edge.GetComponent<LineRenderer>(); 
-                    lr.positionCount = 0; 
-                    lr.positionCount = 2; 
+                    LineRenderer lr = edge.GetComponent<LineRenderer>();
+                    lr.positionCount = 0;
+                    lr.positionCount = 2;
 
                     if (!_nodesDictionary[node.Key].UIedges.ContainsKey(targetNode))
                     {
@@ -172,14 +189,14 @@ public class DrawGraph : MonoBehaviour
             }
         }
     }
-    
+
     public IEnumerator LayoutGraph(string layoutType)
     {
         using (HttpClient client = new HttpClient(new HttpClientHandler
-               {
-                   CookieContainer = CookieContainer,
-                   UseCookies = true
-               }))
+        {
+            CookieContainer = CookieContainer,
+            UseCookies = true
+        }))
         {
             var response1 = client.GetAsync(apiUrl + "layouter/" + layoutType);
             yield return response1;
@@ -205,11 +222,64 @@ public class DrawGraph : MonoBehaviour
             ObjectPool.SharedInstance.ReturnObject(node, SPHERE_POOL_KEY);
         }
         activeNodes.Clear();
-        
+
         foreach (GameObject edge in activeEdges)
         {
             ObjectPool.SharedInstance.ReturnObject(edge, LINE_POOL_KEY);
         }
-        activeEdges.Clear(); 
+        activeEdges.Clear();
+    }
+
+    public void AddNode()
+    {        
+        GameObject sphere = ObjectPool.SharedInstance.GetObject(SPHERE_POOL_KEY);
+        if (sphere != null)
+        {
+            sphere.SetActive(true);            
+            sphere.name = _counter.ToString();
+            sphere.transform.position = new Vector3(0,0,0);
+            sphere.transform.SetParent(graphPrefab.transform);
+            _nodesDictionary.Add(_counter.ToString(), new NodeObject(_counter.ToString(),0,-2000,0));
+            _nodesDictionary[_counter.ToString()].UInode = sphere;
+            _counter++;
+            activeNodes.Add(sphere);
+            redo.Clear();
+            undo.Push(new Command(sphere, "add"));
+        }
+        else
+        {
+            Debug.LogWarning("Not enough spheres in the pool!");
+        }
+    }
+
+    public void UnactiveNode(GameObject sphere)
+    {
+        sphere.SetActive(false);        
+    }
+
+    public void Undo()
+    {        
+        if (undo.Count != 0)
+        {
+            Command aktualCommand = undo.Pop();
+            if (aktualCommand.command.Equals("add"))
+            {
+                UnactiveNode(aktualCommand.gameObject);
+                redo.Push(aktualCommand);
+            }
+        }
+    }
+
+    public void Redo()
+    {
+        if(redo.Count != 0)
+        {
+            Command aktualCommand = redo.Pop();
+            if (aktualCommand.command.Equals("add"))
+            {
+                aktualCommand.gameObject.SetActive(true);
+                undo.Push(aktualCommand);
+            }
+        }                
     }
 }
