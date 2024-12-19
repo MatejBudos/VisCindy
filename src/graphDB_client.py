@@ -31,12 +31,13 @@ class DBClient(Resource):
         OPTIONAL MATCH (n)-[r]->(m)
         WITH
             Id(n) AS id,
+            elementId(n) as NeoId,
             collect(CASE
-                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r)}
+                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r), NeoId: elementId(r)}
                 ELSE null
             END) AS edges
         RETURN
-            id,
+            id, NeoId,
             [edge IN edges WHERE edge IS NOT NULL] AS edges;
         """
         params = {"graphId": graphId}
