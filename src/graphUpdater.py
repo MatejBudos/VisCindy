@@ -47,14 +47,14 @@ class GraphUpdater(Resource):
         properties = change.get("properties", {})
         properties_query = ", ".join(f"{key}: '{value}'" for key, value in properties.items())
         query = f"CREATE (n:{label} {{{properties_query}}})"
-        self.db_client.execute(query)
+        self.db_client.execute_query(query)
 
     def delete_node(self, change):
         # Example: Delete a node by ID or property
         node_id = change.get("nodeId")
         if node_id:
             query = f"MATCH (n) WHERE id(n) = {node_id} DETACH DELETE n"
-            self.db_client.execute(query)
+            self.db_client.execute_query(query)
 
     def update_property(self, change):
         # Example: Update a node's property
@@ -63,7 +63,7 @@ class GraphUpdater(Resource):
         if node_id and properties:
             properties_query = ", ".join(f"n.{key} = '{value}'" for key, value in properties.items())
             query = f"MATCH (n) WHERE id(n) = {node_id} SET {properties_query}"
-            self.db_client.execute(query)
+            self.db_client.execute_query(query)
 
     def add_relationship(self, change):
         # Example: Add a relationship between nodes
@@ -76,7 +76,7 @@ class GraphUpdater(Resource):
             WHERE id(a) = {from_id} AND id(b) = {to_id}
             CREATE (a)-[:{rel_type}]->(b)
             """
-            self.db_client.execute(query)
+            self.db_client.execute_query(query)
 
     def delete_relationship(self, change):
         # Example: Delete a relationship
@@ -89,4 +89,4 @@ class GraphUpdater(Resource):
             WHERE id(a) = {from_id} AND id(b) = {to_id}
             DELETE r
             """
-            self.db_client.execute(query)
+            self.db_client.execute_query(query)

@@ -1,4 +1,3 @@
-
 from neo4j import GraphDatabase
 import json
 from flask import request, session
@@ -7,7 +6,7 @@ from flask_restful import Resource
 from layouter import Layouter
 
 class DBClient(Resource):
-    def __init__( self ) -> None:
+    def __init__(self) -> None:
         with open('authentification.json', 'r') as file:
             data = json.load(file)
             self.driver = self.connect( data["URI"], (data["Username"],data["NEO4J_PASSWORD"]) )
@@ -51,9 +50,12 @@ class DBClient(Resource):
         graph = l.layout( graph )
         json_graph = l.export( graph )
         return json_graph
-    
 
-    
+    def close(self):
+        """Close the Neo4j driver to release resources."""
+        if self.driver:
+            self.driver.close()
+
 if __name__ == "__main__":
     with open('authentification.json', 'r') as file:
         data = json.load(file)
@@ -61,5 +63,4 @@ if __name__ == "__main__":
     res = db.get( 2 )
     
     print(res)
-
-    
+    db.close()  # Ensure that the connection is closed when done
