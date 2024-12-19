@@ -5,6 +5,7 @@ from layouter import Layouter
 from graphDB_client import DBClient
 from layouter import Layouter
 from graph_properties import GraphProperties
+from graphUpdater import GraphUpdater
 
 app = Flask( __name__ )
 app.secret_key = "test123"
@@ -20,7 +21,7 @@ layouter_args.add_argument("graph", type = str, help = "No graph provided")
 api.add_resource( Layouter, "/api/layouter/<string:layout_type>" )
 api.add_resource( DBClient, "/api/graph/<int:graphId>" )
 api.add_resource( GraphProperties, "/api/properties/<int:graphId>" )
-
+api.add_resource(GraphUpdater, '/api/update_graph')
 
 
 
