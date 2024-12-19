@@ -5,6 +5,7 @@ from flask import request, session
 import igraph as ig
 from flask_restful import Resource
 from layouter import Layouter
+
 class DBClient(Resource):
     def __init__( self ) -> None:
         with open('authentification.json', 'r') as file:
