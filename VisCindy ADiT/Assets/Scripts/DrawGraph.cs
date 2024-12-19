@@ -19,15 +19,15 @@ public class QueryPayload
 public class DrawGraph : MonoBehaviour
 {
     public GameObject graphPrefab;
-    public GameObject AddNodePrefab;
-    public GameObject UndoPrefab;
-    public GameObject RedoPrefab;
     private int _counter = 0;
     private Queue<GameObject> linePool;
     private Queue<GameObject> spherePool;
     private static readonly CookieContainer CookieContainer = new CookieContainer();
     private Stack<Command> undo = new Stack<Command>();
     private Stack<Command> redo = new Stack<Command>();
+    private string firstSelectedKey = null;
+    private string secondSelectedKey = null;
+    public bool isAddEdgeMode = false;
     private HttpClientHandler _handler = new HttpClientHandler
     {
         CookieContainer = CookieContainer,
@@ -44,17 +44,7 @@ public class DrawGraph : MonoBehaviour
 
     private const string SPHERE_POOL_KEY = "Nodes";
     private const string LINE_POOL_KEY = "Lines";
-
-    private void Start()
-    {
-        Button addButton = AddNodePrefab.GetComponent<Button>();
-        addButton.onClick.AddListener(() => AddNode());
-        Button undoButton = UndoPrefab.GetComponent<Button>();
-        undoButton.onClick.AddListener(() => Undo());
-        Button redoButton = RedoPrefab.GetComponent<Button>();
-        redoButton.onClick.AddListener(() => Redo());
-    }
-
+    
     void Update()
     {
         if (!_loadedFlag) return;
@@ -152,6 +142,8 @@ public class DrawGraph : MonoBehaviour
                 sphere.name = node.Key;
                 sphere.transform.position = new Vector3(node.Value.x, node.Value.y, node.Value.z);
                 sphere.transform.SetParent(graphPrefab.transform);
+                VertexSelector vertexSelector = sphere.AddComponent<VertexSelector>();
+                vertexSelector.drawGraph = this;
                 _nodesDictionary[node.Key].UInode = sphere;
                 activeNodes.Add(sphere);
             }
@@ -239,16 +231,98 @@ public class DrawGraph : MonoBehaviour
             sphere.name = _counter.ToString();
             sphere.transform.position = new Vector3(0,0,0);
             sphere.transform.SetParent(graphPrefab.transform);
-            _nodesDictionary.Add(_counter.ToString(), new NodeObject(_counter.ToString(),0,-2000,0));
+            VertexSelector vertexSelector = sphere.AddComponent<VertexSelector>();
+            vertexSelector.drawGraph = this;
+            _nodesDictionary.Add(_counter.ToString(), new NodeObject(_counter.ToString(),0,0,0));
             _nodesDictionary[_counter.ToString()].UInode = sphere;
             _counter++;
             activeNodes.Add(sphere);
             redo.Clear();
-            undo.Push(new Command(sphere, "add"));
+            undo.Push(new Command(sphere, "AddNode"));
         }
         else
         {
             Debug.LogWarning("Not enough spheres in the pool!");
+        }
+    }
+
+    public void AddEdge()
+    {
+        firstSelectedKey = null;
+        secondSelectedKey = null;
+        isAddEdgeMode = true;
+    }
+
+    public void OnVertexSelected(string vertexKey)
+    {
+        if (firstSelectedKey == null)
+        {
+            firstSelectedKey = vertexKey;
+            Debug.Log($"First vertex selected: {firstSelectedKey}");
+        }
+        else if (secondSelectedKey == null && firstSelectedKey != vertexKey)
+        {
+            secondSelectedKey = vertexKey;
+            Debug.Log($"Second vertex selected: {secondSelectedKey}");
+
+            // Create the edge between the two vertices
+            CreateEdge(firstSelectedKey, secondSelectedKey);
+
+            // Reset selection
+            firstSelectedKey = null;
+            secondSelectedKey = null;
+            isAddEdgeMode = false;
+        }
+        else
+        {
+            Debug.LogWarning("Invalid selection. Please select a different second vertex.");
+        }
+    }
+
+    // Function to create the edge between two vertices
+    private void CreateEdge(string fromNode, string toNode)
+    {
+        if (_nodesDictionary.ContainsKey(fromNode) && _nodesDictionary.ContainsKey(toNode) && !fromNode.Equals(toNode) && !_nodesDictionary[fromNode].UIedges.ContainsKey(toNode) && !_nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
+        {
+            GameObject edge = ObjectPool.SharedInstance.GetObject(LINE_POOL_KEY);
+            if (edge != null)
+            {
+                edge.SetActive(true);
+                edge.transform.SetParent(graphPrefab.transform);
+
+                LineRenderer lr = edge.GetComponent<LineRenderer>();
+                lr.SetPosition(0, _nodesDictionary[fromNode].UInode.transform.position);
+                lr.SetPosition(1, _nodesDictionary[toNode].UInode.transform.position);
+
+                // Add the edge to the dictionary and activeEdges list
+                if (!_nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
+                {
+                    _nodesDictionary[fromNode].UIedges.Add(toNode, edge);
+                    activeEdges.Add(edge);
+                    Debug.Log($"Edge created between {fromNode} and {toNode}");
+
+                    redo.Clear();
+                    undo.Push(new Command(edge, "AddEdge"));
+
+                    // Reset Line Renderer positions:
+                    LineRenderer lrenderer = edge.GetComponent<LineRenderer>();
+                    lrenderer.positionCount = 0;
+                    lrenderer.positionCount = 2;
+                }
+                else
+                {
+                    Debug.Log("Edge already exists between these nodes!");
+                    ObjectPool.SharedInstance.ReturnObject(edge, LINE_POOL_KEY); // Return to pool
+                }
+            }
+            else
+            {
+                Debug.Log("Not enough lines in the pool!");
+            }
+        }
+        else
+        {
+            Debug.Log($"Invalid nodes: {fromNode} or {toNode} not found in the graph!");
         }
     }
 
@@ -257,14 +331,23 @@ public class DrawGraph : MonoBehaviour
         sphere.SetActive(false);        
     }
 
+    public void UnactiveEdge(GameObject edge)
+    {
+        edge.SetActive(false);
+    }
+
     public void Undo()
     {        
         if (undo.Count != 0)
         {
             Command aktualCommand = undo.Pop();
-            if (aktualCommand.command.Equals("add"))
+            if (aktualCommand.command.Equals("AddNode"))
             {
                 UnactiveNode(aktualCommand.gameObject);
+                redo.Push(aktualCommand);
+            } else if (aktualCommand.command.Equals("AddEdge"))
+            {
+                UnactiveEdge(aktualCommand.gameObject);
                 redo.Push(aktualCommand);
             }
         }
@@ -275,7 +358,11 @@ public class DrawGraph : MonoBehaviour
         if(redo.Count != 0)
         {
             Command aktualCommand = redo.Pop();
-            if (aktualCommand.command.Equals("add"))
+            if (aktualCommand.command.Equals("AddNode"))
+            {
+                aktualCommand.gameObject.SetActive(true);
+                undo.Push(aktualCommand);
+            } else if (aktualCommand.command.Equals("AddEdge"))
             {
                 aktualCommand.gameObject.SetActive(true);
                 undo.Push(aktualCommand);
