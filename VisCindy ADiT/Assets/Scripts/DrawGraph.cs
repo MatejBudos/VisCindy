@@ -28,6 +28,8 @@ public class DrawGraph : MonoBehaviour
     private string firstSelectedKey = null;
     private string secondSelectedKey = null;
     public bool isAddEdgeMode = false;
+    public bool isRemoveEdgeMode = false;
+    public bool isRemoveNodeMode = false;
     private HttpClientHandler _handler = new HttpClientHandler
     {
         CookieContainer = CookieContainer,
@@ -253,29 +255,93 @@ public class DrawGraph : MonoBehaviour
         isAddEdgeMode = true;
     }
 
+    public void RemoveEdge()
+    {
+        firstSelectedKey = null;
+        secondSelectedKey = null;
+        isRemoveEdgeMode = true;
+        
+    }
+
+    public void RemoveNode()
+    {
+        firstSelectedKey = null;
+        secondSelectedKey = null;
+        isRemoveNodeMode = true;
+    }
+
     public void OnVertexSelected(string vertexKey)
     {
         if (firstSelectedKey == null)
         {
             firstSelectedKey = vertexKey;
             Debug.Log($"First vertex selected: {firstSelectedKey}");
+            if (isRemoveNodeMode)
+            {
+                DisableNode(firstSelectedKey);
+                isRemoveNodeMode = false;
+            }
         }
         else if (secondSelectedKey == null && firstSelectedKey != vertexKey)
         {
             secondSelectedKey = vertexKey;
             Debug.Log($"Second vertex selected: {secondSelectedKey}");
 
-            // Create the edge between the two vertices
-            CreateEdge(firstSelectedKey, secondSelectedKey);
-
-            // Reset selection
-            firstSelectedKey = null;
-            secondSelectedKey = null;
-            isAddEdgeMode = false;
+            if (isAddEdgeMode)
+            {
+                CreateEdge(firstSelectedKey, secondSelectedKey);
+                isAddEdgeMode = false;
+            } else if (isRemoveEdgeMode)
+            {
+                DisableEdge(firstSelectedKey, secondSelectedKey);
+                isRemoveEdgeMode = false;
+            }                        
         }
         else
         {
             Debug.LogWarning("Invalid selection. Please select a different second vertex.");
+        }
+    }
+
+    private void DisableEdge(string fromNode, string toNode)
+    {
+        if(_nodesDictionary.ContainsKey(fromNode) && _nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
+        {
+            Debug.Log("Edge succesfully disabled");
+            GameObject edge = _nodesDictionary[fromNode].UIedges[toNode];            
+            SetVisibilityEdge(edge,false);
+            undo.Push(new Command(edge,"RemoveEdge"));
+            redo.Clear();
+        } else if (_nodesDictionary.ContainsKey(toNode) && _nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
+        {
+            Debug.Log("Edge succesfully disabled");
+            GameObject edge = _nodesDictionary[toNode].UIedges[fromNode];
+            SetVisibilityEdge(edge, false);
+            undo.Push(new Command(edge, "RemoveEdge"));
+            redo.Clear();
+        }
+    }
+
+    private void DisableNode(string nodeKey)
+    {
+        if (_nodesDictionary.ContainsKey(nodeKey))
+        {
+            GameObject node = _nodesDictionary[nodeKey].UInode;
+            SetVisibilityNode(node, false);
+            foreach (KeyValuePair<string,NodeObject> vrchol in _nodesDictionary)
+            {
+                foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
+                {
+                    if(vrchol.Key.Equals(nodeKey) || edge.Key.Equals(nodeKey))
+                    {
+                        SetVisibilityEdge(edge.Value, false);
+                    }                    
+                }
+            }
+            Command command = new Command(node, "RemoveNode");
+            command.nodeName = nodeKey;
+            undo.Push(command);
+            redo.Clear();
         }
     }
 
@@ -326,29 +392,48 @@ public class DrawGraph : MonoBehaviour
         }
     }
 
-    public void UnactiveNode(GameObject sphere)
+    public void SetVisibilityNode(GameObject sphere, bool active)
     {
-        sphere.SetActive(false);        
+        sphere.SetActive(active);        
     }
 
-    public void UnactiveEdge(GameObject edge)
+    public void SetVisibilityEdge(GameObject edge, bool active)
     {
-        edge.SetActive(false);
+        edge.SetActive(active);
     }
+
 
     public void Undo()
-    {        
+    {
         if (undo.Count != 0)
         {
             Command aktualCommand = undo.Pop();
             if (aktualCommand.command.Equals("AddNode"))
             {
-                UnactiveNode(aktualCommand.gameObject);
+                SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
             } else if (aktualCommand.command.Equals("AddEdge"))
             {
-                UnactiveEdge(aktualCommand.gameObject);
+                SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
+            } else if (aktualCommand.command.Equals("RemoveNode"))
+            {
+                SetVisibilityNode(aktualCommand.gameObject, true);
+                foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
+                {
+                    foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
+                    {
+                        if (vrchol.Key.Equals(aktualCommand.nodeName) || edge.Key.Equals(aktualCommand.nodeName))
+                        {
+                            SetVisibilityEdge(edge.Value, true);
+                        }
+                    }
+                }
+                redo.Push(aktualCommand);
+            } else if (aktualCommand.command.Equals("RemoveEdge"))
+            {
+                redo.Push(aktualCommand);
+                SetVisibilityEdge(aktualCommand.gameObject,true);
             }
         }
     }
@@ -360,12 +445,31 @@ public class DrawGraph : MonoBehaviour
             Command aktualCommand = redo.Pop();
             if (aktualCommand.command.Equals("AddNode"))
             {
-                aktualCommand.gameObject.SetActive(true);
+                SetVisibilityNode(aktualCommand.gameObject, true);
                 undo.Push(aktualCommand);
             } else if (aktualCommand.command.Equals("AddEdge"))
             {
-                aktualCommand.gameObject.SetActive(true);
+                SetVisibilityEdge(aktualCommand.gameObject, true);
                 undo.Push(aktualCommand);
+            } else if (aktualCommand.command.Equals("RemoveNode"))
+            {
+                SetVisibilityNode(aktualCommand.gameObject, false);
+                foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
+                {
+                    foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
+                    {
+                        if (vrchol.Key.Equals(aktualCommand.nodeName) || edge.Key.Equals(aktualCommand.nodeName))
+                        {
+                            SetVisibilityEdge(edge.Value, false);
+                        }
+                    }
+                }
+                undo.Push(aktualCommand);
+            }
+            else if (aktualCommand.command.Equals("RemoveEdge"))
+            {
+                undo.Push(aktualCommand);
+                SetVisibilityEdge(aktualCommand.gameObject, false);
             }
         }                
     }

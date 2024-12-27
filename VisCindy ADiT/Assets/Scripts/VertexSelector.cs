@@ -6,7 +6,7 @@ public class VertexSelector : MonoBehaviour, IMixedRealityPointerHandler
 
     public void OnPointerClicked(MixedRealityPointerEventData eventData)
     {
-        if (drawGraph != null && drawGraph.isAddEdgeMode)
+        if (drawGraph != null && (drawGraph.isAddEdgeMode || drawGraph.isRemoveEdgeMode || drawGraph.isRemoveNodeMode))
         {
             // Zavolá funkciu na výber vrcholu
             drawGraph.OnVertexSelected(gameObject.name); // Predpokladáme, že meno GameObjectu je k¾úè v _nodesDictionary
