@@ -679,6 +679,7 @@ public class DrawGraph : MonoBehaviour
             else if (commands[i].command.Equals("AddEdge"))
             {
                 Destroy(_nodesDictionary[commands[i].fromNode].UIedges[commands[i].toNode]);
+                _nodesDictionary[commands[i].fromNode].UIedges.Remove(commands[i].toNode);
                 int edge_index = _nodesDictionary[commands[i].fromNode].edges.IndexOf(commands[i].toNode);
                 _nodesDictionary[commands[i].fromNode].edges.Remove(commands[i].toNode);
                 _nodesDictionary[commands[i].fromNode].edges_id.Remove(_nodesDictionary[commands[i].fromNode].edges_id[edge_index]);
