@@ -8,6 +8,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 [System.Serializable]
 public class QueryPayload
@@ -20,6 +22,7 @@ public class DrawGraph : MonoBehaviour
 {
     public GameObject graphPrefab;
     private int _counter = 0;
+    private int _counterEdges = 0;
     private Queue<GameObject> linePool;
     private Queue<GameObject> spherePool;
     private static readonly CookieContainer CookieContainer = new CookieContainer();
@@ -157,6 +160,7 @@ public class DrawGraph : MonoBehaviour
 
         foreach (KeyValuePair<string, NodeObject> node in forAdd)
         {
+            int enumerator = 0;
             foreach (string targetNode in node.Value.edges)
             {
                 if (linePool.Count > 0)
@@ -174,12 +178,17 @@ public class DrawGraph : MonoBehaviour
                     {
                         _nodesDictionary[node.Key].UIedges.Add(targetNode, edge);
                         activeEdges.Add(edge);
+                        if(_counterEdges < Int32.Parse(_nodesDictionary[node.Key].edges_id[enumerator]))
+                        {
+                            _counterEdges = Int32.Parse(_nodesDictionary[node.Key].edges_id[enumerator]);
+                        }
                     }
                 }
                 else
                 {
                     Debug.LogWarning("Not enough lines in the pool!");
                 }
+                enumerator++;
             }
         }
     }
@@ -236,11 +245,11 @@ public class DrawGraph : MonoBehaviour
             VertexSelector vertexSelector = sphere.AddComponent<VertexSelector>();
             vertexSelector.drawGraph = this;
             _nodesDictionary.Add(_counter.ToString(), new NodeObject(_counter.ToString(),0,0,0));
-            _nodesDictionary[_counter.ToString()].UInode = sphere;
-            _counter++;
+            _nodesDictionary[_counter.ToString()].UInode = sphere;            
             activeNodes.Add(sphere);
             redo.Clear();
-            undo.Push(new Command(sphere, "AddNode"));
+            undo.Push(new Command(sphere, "AddNode","","",_counter.ToString()));
+            _counter++;
         }
         else
         {
@@ -307,17 +316,17 @@ public class DrawGraph : MonoBehaviour
     {
         if(_nodesDictionary.ContainsKey(fromNode) && _nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
         {
-            Debug.Log("Edge succesfully disabled");
+            Debug.Log("Edge between" + fromNode + " " + toNode +"succesfully disabled");
             GameObject edge = _nodesDictionary[fromNode].UIedges[toNode];            
             SetVisibilityEdge(edge,false);
-            undo.Push(new Command(edge,"RemoveEdge"));
+            undo.Push(new Command(edge,"RemoveEdge",fromNode,toNode));
             redo.Clear();
         } else if (_nodesDictionary.ContainsKey(toNode) && _nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
         {
-            Debug.Log("Edge succesfully disabled");
+            Debug.Log("Edge between" + fromNode + " " + toNode + "succesfully disabled");
             GameObject edge = _nodesDictionary[toNode].UIedges[fromNode];
             SetVisibilityEdge(edge, false);
-            undo.Push(new Command(edge, "RemoveEdge"));
+            undo.Push(new Command(edge, "RemoveEdge",toNode,fromNode));
             redo.Clear();
         }
     }
@@ -364,11 +373,14 @@ public class DrawGraph : MonoBehaviour
                 if (!_nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
                 {
                     _nodesDictionary[fromNode].UIedges.Add(toNode, edge);
+                    _nodesDictionary[fromNode].edges.Add(toNode);
+                    _counterEdges++;
+                    _nodesDictionary[fromNode].edges_id.Add(_counterEdges.ToString());
                     activeEdges.Add(edge);
                     Debug.Log($"Edge created between {fromNode} and {toNode}");
 
                     redo.Clear();
-                    undo.Push(new Command(edge, "AddEdge"));
+                    undo.Push(new Command(edge, "AddEdge",fromNode,toNode));
 
                     // Reset Line Renderer positions:
                     LineRenderer lrenderer = edge.GetComponent<LineRenderer>();
@@ -473,4 +485,206 @@ public class DrawGraph : MonoBehaviour
             }
         }                
     }
+
+    public void CreatJsonFromBuffer()
+    {
+        JObject sendToDB = new JObject();
+        List<Command> commands = new List<Command>();
+        
+        int PK = 0;        
+        foreach (var command in undo)
+        {
+            commands.Add(command);
+        }
+        //iterate over undo stack which contain new changes and them add to json 
+        for (int i = commands.Count-1; i >= 0; i--)
+        {            
+            Debug.Log( PK.ToString() + " "+ commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
+            //if change is AddNode is enough to add him just to JSON no backround proceses are needed
+            if (commands[i].command.Equals("AddNode"))
+            {
+                JProperty property = new JProperty(PK.ToString(),
+                    new JObject(
+                        new JProperty("actionType",commands[i].command),
+                        new JProperty("GraphId", commands[i].nodeName),
+                        new JProperty("Attributes",
+                            new JObject(
+                                new JProperty("x",commands[i].gameObject.transform.position.x),
+                                new JProperty("y", commands[i].gameObject.transform.position.y),
+                                new JProperty("z", commands[i].gameObject.transform.position.z)
+                                ))));
+                sendToDB.Add(property);
+            }
+            //if change is AddEdge adding to json is enought too 
+            else if (commands[i].command.Equals("AddEdge"))
+            {
+                //find out id of edge for adding                
+                int enumerator = 0;
+                string edge_id = "";
+                foreach(string edge in _nodesDictionary[commands[i].fromNode].edges)
+                {
+                    if (edge.Equals(commands[i].toNode))
+                    {
+                        edge_id = _nodesDictionary[commands[i].fromNode].edges_id[enumerator];
+                        break;
+                    }
+                    enumerator++;
+                }                
+                //create json file
+                JProperty property = new JProperty(PK.ToString(),
+                    new JObject(
+                        new JProperty("actionType", commands[i].command),
+                        new JProperty("GraphId", edge_id),
+                        new JProperty("Attributes",
+                            new JObject(
+                                new JProperty("fromNode", commands[i].fromNode),
+                                new JProperty("toNode", commands[i].toNode)
+                                ))));
+                sendToDB.Add(property);
+            }
+            //if command is RemoveNode we must add JSON node for removing and all edges which go to or from him,
+            //than we must do some backround processes like remove node and again all his edges which go to or from him
+            else if (commands[i].command.Equals("RemoveNode"))
+            {
+                //AddNode to json
+                JProperty property = new JProperty(PK.ToString(),
+                    new JObject(
+                        new JProperty("actionType", commands[i].command),
+                        new JProperty("GraphId", commands[i].nodeName),
+                        new JProperty("Attributes",
+                            new JObject(
+                                new JProperty("x", commands[i].gameObject.transform.position.x),
+                                new JProperty("y", commands[i].gameObject.transform.position.y),
+                                new JProperty("z", commands[i].gameObject.transform.position.z)
+                                ))));
+                sendToDB.Add(property);
+                PK++;
+                //destroy all edge gameobject which start from our node
+                foreach(KeyValuePair<string,GameObject> edge in _nodesDictionary[commands[i].nodeName].UIedges)
+                {
+                    Destroy(edge.Value);
+                }
+                int enumerator = 0;
+                //Add all edges to json, which starts from our node
+                foreach (string edge_id in _nodesDictionary[commands[i].nodeName].edges_id)
+                {
+                    //create json file
+                    property = new JProperty(PK.ToString(),
+                        new JObject(
+                            new JProperty("actionType", "RemoveEdge"),
+                            new JProperty("GraphId", edge_id),
+                            new JProperty("Attributes",
+                                new JObject(
+                                    new JProperty("fromNode", commands[i].nodeName),
+                                    new JProperty("toNode", _nodesDictionary[commands[i].nodeName].edges[enumerator])
+                                    ))));
+                    sendToDB.Add(property);
+                    enumerator++;
+                    PK++;
+                }
+                //Add all edges to json, which come to our node
+                foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
+                {
+                    if (!node.Key.Equals(commands[i].nodeName))
+                    {
+                        enumerator = 0;
+                        foreach (KeyValuePair<string, GameObject> edge in node.Value.UIedges)
+                        {
+                            if (edge.Key.Equals(commands[i].nodeName))
+                            {
+                                //create json file
+                                property = new JProperty(PK.ToString(),
+                                    new JObject(
+                                        new JProperty("actionType", "RemoveEdge"),
+                                        new JProperty("GraphId", _nodesDictionary[commands[i].nodeName].edges_id[enumerator]),
+                                        new JProperty("Attributes",
+                                            new JObject(
+                                                new JProperty("fromNode", node.Key),
+                                                new JProperty("toNode", edge.Key)
+                                                ))));
+                                sendToDB.Add(property);
+                                PK++;
+                                //Destroy part
+                                Destroy(edge.Value);
+                                node.Value.UIedges.Remove(edge.Key);
+                                node.Value.edges.Remove(edge.Key);
+                                node.Value.edges_id.Remove(node.Value.edges_id[enumerator]);
+                                break;
+                            }
+                            enumerator++;
+                        }
+                    }                  
+                }
+                Destroy(_nodesDictionary[commands[i].nodeName].UInode);
+                _nodesDictionary.Remove(commands[i].nodeName);
+            }
+            //if condition is RemoveEdge than we add her to json and do some neccessary backround process for removing edge from our list
+            else if (commands[i].command.Equals("RemoveEdge"))
+            {
+                //find out id of edge for adding                
+                int enumerator = 0;
+                string edge_id = "";
+                foreach (string edge in _nodesDictionary[commands[i].fromNode].edges)
+                {
+                    if (edge.Equals(commands[i].toNode))
+                    {
+                        edge_id = _nodesDictionary[commands[i].fromNode].edges_id[enumerator];
+                    }
+                    enumerator++;
+                }
+                //create json file
+                JProperty property = new JProperty(PK.ToString(),
+                    new JObject(
+                        new JProperty("actionType", commands[i].command),
+                        new JProperty("GraphId", edge_id),
+                        new JProperty("Attributes",
+                            new JObject(
+                                new JProperty("fromNode", commands[i].fromNode),
+                                new JProperty("toNode", commands[i].toNode)
+                                ))));
+                sendToDB.Add(property);
+                //remove edge from our list
+                Destroy(_nodesDictionary[commands[i].fromNode].UIedges[commands[i].toNode]);
+                _nodesDictionary[commands[i].fromNode].UIedges.Remove(commands[i].toNode);
+                enumerator = 0;
+                foreach(string edge in _nodesDictionary[commands[i].fromNode].edges)
+                {
+                    if (edge.Equals(commands[i].toNode))
+                    {
+                        _nodesDictionary[commands[i].fromNode].edges.Remove(commands[i].toNode);
+                        _nodesDictionary[commands[i].fromNode].edges_id.Remove(_nodesDictionary[commands[i].fromNode].edges_id[enumerator]);
+                        break;
+                    }
+                    enumerator++;
+                }
+            }
+            PK++;
+        }
+        //clear our last changes and commit them to DB
+        undo.Clear();
+        //iterate over redo due reason when was add some node or edge they were backroundly created and only visibility
+        //dynamicly change
+        commands = new List<Command>();    
+        foreach(var command in redo)
+        {
+            commands.Add(command);            
+        }
+        for(int i = commands.Count - 1; i >= 0; i--)
+        {
+            if (commands[i].command.Equals("AddNode"))
+            {
+                Destroy(_nodesDictionary[commands[i].nodeName].UInode);
+                _nodesDictionary.Remove(commands[i].nodeName);
+            }
+            else if (commands[i].command.Equals("AddEdge"))
+            {
+                Destroy(_nodesDictionary[commands[i].fromNode].UIedges[commands[i].toNode]);
+                int edge_index = _nodesDictionary[commands[i].fromNode].edges.IndexOf(commands[i].toNode);
+                _nodesDictionary[commands[i].fromNode].edges.Remove(commands[i].toNode);
+                _nodesDictionary[commands[i].fromNode].edges_id.Remove(_nodesDictionary[commands[i].fromNode].edges_id[edge_index]);
+            }
+        }
+        redo.Clear();
+        Debug.Log(sendToDB.ToString());
+    } 
 }
