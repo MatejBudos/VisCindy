@@ -488,10 +488,9 @@ public class DrawGraph : MonoBehaviour
 
     public void CreatJsonFromBuffer()
     {
-        JObject sendToDB = new JObject();
+        JObject sendToDB = new JObject(new JProperty("changes",new JArray()));
         List<Command> commands = new List<Command>();
-        
-        int PK = 0;        
+            
         foreach (var command in undo)
         {
             commands.Add(command);
@@ -499,21 +498,21 @@ public class DrawGraph : MonoBehaviour
         //iterate over undo stack which contain new changes and them add to json 
         for (int i = commands.Count-1; i >= 0; i--)
         {            
-            Debug.Log( PK.ToString() + " "+ commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
+            Debug.Log(commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
             //if change is addNode is enough to add him just to JSON no backround proceses are needed
             if (commands[i].command.Equals("addNode"))
             {
-                JProperty property = new JProperty(PK.ToString(),
-                    new JObject(
-                        new JProperty("actionType",commands[i].command),
-                        new JProperty("GraphId", commands[i].nodeName),
-                        new JProperty("Attributes",
-                            new JObject(
-                                new JProperty("x",commands[i].gameObject.transform.position.x),
-                                new JProperty("y", commands[i].gameObject.transform.position.y),
-                                new JProperty("z", commands[i].gameObject.transform.position.z)
-                                ))));
-                sendToDB.Add(property);
+                //create json file   
+                JObject objekt = new JObject(
+                    new JProperty("actionType", commands[i].command),                    
+                    new JProperty("properties",
+                        new JObject(
+                            new JProperty("graphId", Int32.Parse(commands[i].nodeName)),
+                            new JProperty("x", commands[i].gameObject.transform.position.x),
+                            new JProperty("y", commands[i].gameObject.transform.position.y),
+                            new JProperty("z", commands[i].gameObject.transform.position.z)
+                            )));                
+                ((JArray)sendToDB["changes"]).Add(objekt);
             }
             //if change is AddEdge adding to json is enought too 
             else if (commands[i].command.Equals("addRelationship"))
@@ -529,36 +528,27 @@ public class DrawGraph : MonoBehaviour
                         break;
                     }
                     enumerator++;
-                }                
-                //create json file
-                JProperty property = new JProperty(PK.ToString(),
-                    new JObject(
-                        new JProperty("actionType", commands[i].command),
-                        new JProperty("GraphId", edge_id),
-                        new JProperty("Attributes",
-                            new JObject(
-                                new JProperty("fromNode", commands[i].fromNode),
-                                new JProperty("toNode", commands[i].toNode)
-                                ))));
-                sendToDB.Add(property);
+                }
+                //create json file                
+                JObject objekt = new JObject(
+                    new JProperty("actionType", commands[i].command),
+                    new JProperty("properties",
+                        new JObject(
+                            new JProperty("fromNodeId", Int32.Parse(commands[i].fromNode)),
+                            new JProperty("toNodeId", Int32.Parse(commands[i].toNode)))));
+                ((JArray)sendToDB["changes"]).Add(objekt);
             }
             //if command is RemoveNode we must add JSON node for removing and all edges which go to or from him,
             //than we must do some backround processes like remove node and again all his edges which go to or from him
             else if (commands[i].command.Equals("deleteNode"))
             {
-                //AddNode to json
-                JProperty property = new JProperty(PK.ToString(),
-                    new JObject(
-                        new JProperty("actionType", commands[i].command),
-                        new JProperty("GraphId", commands[i].nodeName),
-                        new JProperty("Attributes",
-                            new JObject(
-                                new JProperty("x", commands[i].gameObject.transform.position.x),
-                                new JProperty("y", commands[i].gameObject.transform.position.y),
-                                new JProperty("z", commands[i].gameObject.transform.position.z)
-                                ))));
-                sendToDB.Add(property);
-                PK++;
+                //AddNode for delete to json                
+                JObject objekt = new JObject(
+                    new JProperty("actionType", commands[i].command),
+                    new JProperty("properties",
+                        new JObject(
+                            new JProperty("nodeId", Int32.Parse(commands[i].nodeName)))));
+                ((JArray)sendToDB["changes"]).Add(objekt);
                 //destroy all edge gameobject which start from our node
                 foreach(KeyValuePair<string,GameObject> edge in _nodesDictionary[commands[i].nodeName].UIedges)
                 {
@@ -569,18 +559,16 @@ public class DrawGraph : MonoBehaviour
                 foreach (string edge_id in _nodesDictionary[commands[i].nodeName].edges_id)
                 {
                     //create json file
-                    property = new JProperty(PK.ToString(),
+                    objekt = new JObject(
+                    new JProperty("actionType", "deleteRelationship"),
+                    new JProperty("properties",
                         new JObject(
-                            new JProperty("actionType", "deleteRelationship"),
-                            new JProperty("GraphId", edge_id),
-                            new JProperty("Attributes",
-                                new JObject(
-                                    new JProperty("fromNode", commands[i].nodeName),
-                                    new JProperty("toNode", _nodesDictionary[commands[i].nodeName].edges[enumerator])
-                                    ))));
-                    sendToDB.Add(property);
+                            new JProperty("graphId",Int32.Parse(edge_id)),
+                            new JProperty("fromNodeId", Int32.Parse(commands[i].nodeName)),
+                            new JProperty("toNodeId", Int32.Parse(_nodesDictionary[commands[i].nodeName].edges[enumerator])))));
+
+                    ((JArray)sendToDB["changes"]).Add(objekt);
                     enumerator++;
-                    PK++;
                 }
                 //Add all edges to json, which come to our node
                 foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
@@ -593,17 +581,16 @@ public class DrawGraph : MonoBehaviour
                             if (edge.Key.Equals(commands[i].nodeName))
                             {
                                 //create json file
-                                property = new JProperty(PK.ToString(),
-                                    new JObject(
-                                        new JProperty("actionType", "deleteRelationship"),
-                                        new JProperty("GraphId", _nodesDictionary[commands[i].nodeName].edges_id[enumerator]),
-                                        new JProperty("Attributes",
-                                            new JObject(
-                                                new JProperty("fromNode", node.Key),
-                                                new JProperty("toNode", edge.Key)
-                                                ))));
-                                sendToDB.Add(property);
-                                PK++;
+                                objekt = new JObject(
+                                    new JProperty("actionType", "deleteRelationship"),
+                                    new JProperty("properties",
+                                        new JObject(
+                                            new JProperty("graphId",Int32.Parse(node.Value.edges_id[enumerator])),
+                                            new JProperty("fromNodeId", Int32.Parse(node.Key)),
+                                            new JProperty("toNodeId", Int32.Parse(edge.Key)))));
+
+                                ((JArray)sendToDB["changes"]).Add(objekt);
+                                
                                 //Destroy part
                                 Destroy(edge.Value);
                                 node.Value.UIedges.Remove(edge.Key);
@@ -633,16 +620,16 @@ public class DrawGraph : MonoBehaviour
                     enumerator++;
                 }
                 //create json file
-                JProperty property = new JProperty(PK.ToString(),
-                    new JObject(
-                        new JProperty("actionType", commands[i].command),
-                        new JProperty("GraphId", edge_id),
-                        new JProperty("Attributes",
-                            new JObject(
-                                new JProperty("fromNode", commands[i].fromNode),
-                                new JProperty("toNode", commands[i].toNode)
-                                ))));
-                sendToDB.Add(property);
+                JObject objekt = new JObject(
+                    new JProperty("actionType", commands[i].command),
+                    new JProperty("properties",
+                        new JObject(
+                            new JProperty("graphId",Int32.Parse(edge_id),
+                            new JProperty("fromNodeId", Int32.Parse(commands[i].fromNode)),
+                            new JProperty("toNodeId", Int32.Parse(commands[i].toNode))))));
+
+                ((JArray)sendToDB["changes"]).Add(objekt);
+                
                 //remove edge from our list
                 Destroy(_nodesDictionary[commands[i].fromNode].UIedges[commands[i].toNode]);
                 _nodesDictionary[commands[i].fromNode].UIedges.Remove(commands[i].toNode);
@@ -658,7 +645,6 @@ public class DrawGraph : MonoBehaviour
                     enumerator++;
                 }
             }
-            PK++;
         }
         //clear our last changes and commit them to DB
         undo.Clear();
@@ -704,6 +690,9 @@ public class DrawGraph : MonoBehaviour
                 // Serialize JObject na JSON string
                 string json = sendToDB.ToString();
 
+                // Log JSON pred odoslaním
+                Debug.Log("Preparing to send JSON: " + json);
+
                 // Pripravte obsah pre POST request
                 StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -718,13 +707,28 @@ public class DrawGraph : MonoBehaviour
                 }
                 else
                 {
+                    // Ak server vráti chybu, logujte jej detaily
+                    string errorResponse = await response.Content.ReadAsStringAsync();
                     Debug.LogError($"Error: {response.StatusCode} - {response.ReasonPhrase}");
+                    Debug.LogError($"Response content: {errorResponse}");
                 }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                // Log HTTP chyby
+                Debug.LogError("HTTP Request Exception: " + httpEx.Message);
+            }
+            catch (JsonSerializationException jsonEx)
+            {
+                // Log chyby pri serializácii JSON-u
+                Debug.LogError("JSON Serialization Exception: " + jsonEx.Message);
             }
             catch (Exception e)
             {
+                // Log všeobecné výnimky
                 Debug.LogError("Exception: " + e.Message);
             }
         }
     }
+
 }
