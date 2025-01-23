@@ -248,7 +248,7 @@ public class DrawGraph : MonoBehaviour
             _nodesDictionary[_counter.ToString()].UInode = sphere;            
             activeNodes.Add(sphere);
             redo.Clear();
-            undo.Push(new Command(sphere, "AddNode","","",_counter.ToString()));
+            undo.Push(new Command(sphere, "addNode","","",_counter.ToString()));
             _counter++;
         }
         else
@@ -319,14 +319,14 @@ public class DrawGraph : MonoBehaviour
             Debug.Log("Edge between" + fromNode + " " + toNode +"succesfully disabled");
             GameObject edge = _nodesDictionary[fromNode].UIedges[toNode];            
             SetVisibilityEdge(edge,false);
-            undo.Push(new Command(edge,"RemoveEdge",fromNode,toNode));
+            undo.Push(new Command(edge,"deleteRelationship",fromNode,toNode));
             redo.Clear();
         } else if (_nodesDictionary.ContainsKey(toNode) && _nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
         {
             Debug.Log("Edge between" + fromNode + " " + toNode + "succesfully disabled");
             GameObject edge = _nodesDictionary[toNode].UIedges[fromNode];
             SetVisibilityEdge(edge, false);
-            undo.Push(new Command(edge, "RemoveEdge",toNode,fromNode));
+            undo.Push(new Command(edge, "deleteRelationship",toNode,fromNode));
             redo.Clear();
         }
     }
@@ -347,7 +347,7 @@ public class DrawGraph : MonoBehaviour
                     }                    
                 }
             }
-            Command command = new Command(node, "RemoveNode");
+            Command command = new Command(node, "deleteNode");
             command.nodeName = nodeKey;
             undo.Push(command);
             redo.Clear();
@@ -380,7 +380,7 @@ public class DrawGraph : MonoBehaviour
                     Debug.Log($"Edge created between {fromNode} and {toNode}");
 
                     redo.Clear();
-                    undo.Push(new Command(edge, "AddEdge",fromNode,toNode));
+                    undo.Push(new Command(edge, "addRelationship",fromNode,toNode));
 
                     // Reset Line Renderer positions:
                     LineRenderer lrenderer = edge.GetComponent<LineRenderer>();
@@ -420,15 +420,15 @@ public class DrawGraph : MonoBehaviour
         if (undo.Count != 0)
         {
             Command aktualCommand = undo.Pop();
-            if (aktualCommand.command.Equals("AddNode"))
+            if (aktualCommand.command.Equals("addNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
-            } else if (aktualCommand.command.Equals("AddEdge"))
+            } else if (aktualCommand.command.Equals("addRelationship"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
-            } else if (aktualCommand.command.Equals("RemoveNode"))
+            } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, true);
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
@@ -442,7 +442,7 @@ public class DrawGraph : MonoBehaviour
                     }
                 }
                 redo.Push(aktualCommand);
-            } else if (aktualCommand.command.Equals("RemoveEdge"))
+            } else if (aktualCommand.command.Equals("deleteRelationship"))
             {
                 redo.Push(aktualCommand);
                 SetVisibilityEdge(aktualCommand.gameObject,true);
@@ -455,15 +455,15 @@ public class DrawGraph : MonoBehaviour
         if(redo.Count != 0)
         {
             Command aktualCommand = redo.Pop();
-            if (aktualCommand.command.Equals("AddNode"))
+            if (aktualCommand.command.Equals("addNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, true);
                 undo.Push(aktualCommand);
-            } else if (aktualCommand.command.Equals("AddEdge"))
+            } else if (aktualCommand.command.Equals("addRelationship"))
             {
                 SetVisibilityEdge(aktualCommand.gameObject, true);
                 undo.Push(aktualCommand);
-            } else if (aktualCommand.command.Equals("RemoveNode"))
+            } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
@@ -478,7 +478,7 @@ public class DrawGraph : MonoBehaviour
                 }
                 undo.Push(aktualCommand);
             }
-            else if (aktualCommand.command.Equals("RemoveEdge"))
+            else if (aktualCommand.command.Equals("deleteRelationship"))
             {
                 undo.Push(aktualCommand);
                 SetVisibilityEdge(aktualCommand.gameObject, false);
@@ -500,8 +500,8 @@ public class DrawGraph : MonoBehaviour
         for (int i = commands.Count-1; i >= 0; i--)
         {            
             Debug.Log( PK.ToString() + " "+ commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
-            //if change is AddNode is enough to add him just to JSON no backround proceses are needed
-            if (commands[i].command.Equals("AddNode"))
+            //if change is addNode is enough to add him just to JSON no backround proceses are needed
+            if (commands[i].command.Equals("addNode"))
             {
                 JProperty property = new JProperty(PK.ToString(),
                     new JObject(
@@ -516,7 +516,7 @@ public class DrawGraph : MonoBehaviour
                 sendToDB.Add(property);
             }
             //if change is AddEdge adding to json is enought too 
-            else if (commands[i].command.Equals("AddEdge"))
+            else if (commands[i].command.Equals("addRelationship"))
             {
                 //find out id of edge for adding                
                 int enumerator = 0;
@@ -544,7 +544,7 @@ public class DrawGraph : MonoBehaviour
             }
             //if command is RemoveNode we must add JSON node for removing and all edges which go to or from him,
             //than we must do some backround processes like remove node and again all his edges which go to or from him
-            else if (commands[i].command.Equals("RemoveNode"))
+            else if (commands[i].command.Equals("deleteNode"))
             {
                 //AddNode to json
                 JProperty property = new JProperty(PK.ToString(),
@@ -571,7 +571,7 @@ public class DrawGraph : MonoBehaviour
                     //create json file
                     property = new JProperty(PK.ToString(),
                         new JObject(
-                            new JProperty("actionType", "RemoveEdge"),
+                            new JProperty("actionType", "deleteRelationship"),
                             new JProperty("GraphId", edge_id),
                             new JProperty("Attributes",
                                 new JObject(
@@ -595,7 +595,7 @@ public class DrawGraph : MonoBehaviour
                                 //create json file
                                 property = new JProperty(PK.ToString(),
                                     new JObject(
-                                        new JProperty("actionType", "RemoveEdge"),
+                                        new JProperty("actionType", "deleteRelationship"),
                                         new JProperty("GraphId", _nodesDictionary[commands[i].nodeName].edges_id[enumerator]),
                                         new JProperty("Attributes",
                                             new JObject(
@@ -619,7 +619,7 @@ public class DrawGraph : MonoBehaviour
                 _nodesDictionary.Remove(commands[i].nodeName);
             }
             //if condition is RemoveEdge than we add her to json and do some neccessary backround process for removing edge from our list
-            else if (commands[i].command.Equals("RemoveEdge"))
+            else if (commands[i].command.Equals("deleteRelationship"))
             {
                 //find out id of edge for adding                
                 int enumerator = 0;
@@ -671,12 +671,12 @@ public class DrawGraph : MonoBehaviour
         }
         for(int i = commands.Count - 1; i >= 0; i--)
         {
-            if (commands[i].command.Equals("AddNode"))
+            if (commands[i].command.Equals("addNode"))
             {
                 Destroy(_nodesDictionary[commands[i].nodeName].UInode);
                 _nodesDictionary.Remove(commands[i].nodeName);
             }
-            else if (commands[i].command.Equals("AddEdge"))
+            else if (commands[i].command.Equals("addRelationship"))
             {
                 Destroy(_nodesDictionary[commands[i].fromNode].UIedges[commands[i].toNode]);
                 _nodesDictionary[commands[i].fromNode].UIedges.Remove(commands[i].toNode);
@@ -687,5 +687,44 @@ public class DrawGraph : MonoBehaviour
         }
         redo.Clear();
         Debug.Log(sendToDB.ToString());
-    } 
+        sendJson(sendToDB);
+    }
+
+    private async void sendJson(JObject sendToDB)
+    {
+        await PostJsonAsync(apiUrl+ "update_graph", sendToDB);
+    }
+
+    private async Task PostJsonAsync(string url, JObject sendToDB)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            try
+            {
+                // Serialize JObject na JSON string
+                string json = sendToDB.ToString();
+
+                // Pripravte obsah pre POST request
+                StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Odošlite POST request
+                HttpResponseMessage response = await client.PostAsync(url, content);
+
+                // Spracovanie odpovede
+                if (response.IsSuccessStatusCode)
+                {
+                    string responseData = await response.Content.ReadAsStringAsync();
+                    Debug.Log("Response: " + responseData);
+                }
+                else
+                {
+                    Debug.LogError($"Error: {response.StatusCode} - {response.ReasonPhrase}");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Exception: " + e.Message);
+            }
+        }
+    }
 }
