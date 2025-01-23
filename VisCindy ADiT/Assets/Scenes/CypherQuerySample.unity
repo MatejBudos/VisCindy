@@ -10399,7 +10399,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Delete Query
+  m_text: Finalise Query
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -14604,7 +14604,7 @@ GameObject:
   - component: {fileID: 2124769731}
   - component: {fileID: 2124769730}
   m_Layer: 0
-  m_Name: FinalizeQuery
+  m_Name: FinaliseQuery
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -14677,7 +14677,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1754200330}
         m_TargetAssemblyTypeName: CypherQueryHandler, Assembly-CSharp
-        m_MethodName: DeleteQuery
+        m_MethodName: FinaliseQuery
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
