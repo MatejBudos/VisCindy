@@ -1,7 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
 using Microsoft.MixedReality.Toolkit;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -12,6 +17,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
 using Button = UnityEngine.UI.Button;
+
 
 public class CypherQueryHandler : MonoBehaviour
 {
@@ -24,10 +30,24 @@ public class CypherQueryHandler : MonoBehaviour
     [SerializeField] private GameObject or;
     [SerializeField] private GameObject verticalObj;
     [SerializeField] private TMP_Text queryTextField;
+    [SerializeField] private TMP_Dropdown getGraphDropdown;
+    [SerializeField] private TMP_Dropdown nodeLabelDropdown;
+    [SerializeField] private TMP_Dropdown nodePropertiesDropdown;
+    public string apiUrl = "http://127.0.0.1:5000/api/";
     private List<GameObject> _elementsToCopy;
     private bool _fFflag;
     private int _rowCounter;
     private string _queryPriority;
+    private string _finalQuery;
+    private string _responseData1;
+    private static readonly CookieContainer CookieContainer = new CookieContainer();
+    private HttpClientHandler _handler = new HttpClientHandler
+    {
+        CookieContainer = CookieContainer,
+        UseCookies = true
+    };
+
+    private JObject _jsonDictionary;
 
     void Start()
     {
@@ -41,14 +61,81 @@ public class CypherQueryHandler : MonoBehaviour
             and,
             or
         };
-        CreateQueryRow();
-        _rowCounter = 1;
+        
+        _rowCounter = 0;
         _queryPriority = "p0";
+        StartCoroutine(GetGraphProperties());
     }
 
     public void UpdateQueryText()
     {
         queryTextField.SetText(_queryPriority);
+    }
+    
+    public void CreateDictionary()
+    {
+        _jsonDictionary = JsonConvert.DeserializeObject<JObject>(_responseData1);
+    }
+    
+    public void UpdateDropdown()
+    {
+        nodeLabelDropdown.ClearOptions();
+        nodePropertiesDropdown.ClearOptions();
+        nodeLabelDropdown.AddOptions(_jsonDictionary["node_labels"]?.ToObject<List<string>>());
+        nodePropertiesDropdown.AddOptions(_jsonDictionary["node_properties"]?.ToObject<List<string>>());
+    }
+
+    public void FinaliseQuery()
+    {
+        _finalQuery = "";
+        int pointer = 0;
+        foreach (char c in _queryPriority)
+        {
+            if (c == '(')
+            {
+                _finalQuery += '(';
+            }
+            else if (c == ')')
+            {
+                _finalQuery += ')';
+            }
+            else if (c == ' ')
+            {
+                _finalQuery += ' ';
+            }
+            else if (c == 'p')
+            {
+                string pNum = "";
+                while (pointer + 1 < _queryPriority.Length && char.IsDigit(_queryPriority[pointer + 1]))
+                {
+                    pNum += _queryPriority[pointer + 1];
+                    pointer++;
+                }
+
+                _finalQuery += "data from p" + pNum;
+            }
+            else if (c == '&')
+            {
+                if (_queryPriority[pointer - 1] == c)
+                {
+                    _finalQuery += "AND";
+                }
+            }
+            else if (c == '|')
+            {
+                if (_queryPriority[pointer - 1] == c)
+                {
+                    _finalQuery += "OR";
+                }
+            }
+
+            if (!char.IsDigit(c))
+            {
+                pointer++;
+            }
+        }
+        
+        queryTextField.text = _finalQuery;
     }
 
 
@@ -132,8 +219,6 @@ public class CypherQueryHandler : MonoBehaviour
 
     public void OnButtonClickedAND(int buttonID) //and
     {
-        // Now you can differentiate between the buttons based on buttonID
-        Debug.Log("DODOKOLEKTOR: " + buttonID);
         int index = _queryPriority.IndexOf("p" + buttonID, StringComparison.Ordinal);
 
         if (index != -1)
@@ -148,10 +233,6 @@ public class CypherQueryHandler : MonoBehaviour
                 _queryPriority = _queryPriority.Insert(index + 4, "&& p" + _rowCounter + ") ");
             }
         }
-        else
-        {
-            Debug.Log("Som kokot");
-        }
 
         _queryPriority += ' ';
         // Debug.Log(_queryPriority + "rwc: " + _rowCounter + "btID: " + buttonID);
@@ -163,15 +244,13 @@ public class CypherQueryHandler : MonoBehaviour
     
     public void OnButtonClickedOR(int buttonID) //and
     {
-        // Now you can differentiate between the buttons based on buttonID
-        Debug.Log("DODOKOLEKTOR: " + buttonID);
         int index = _queryPriority.IndexOf("p" + buttonID, StringComparison.Ordinal);
 
         if (index != -1)
         {
             _queryPriority = _queryPriority.Insert(index, "(");
             //zasa mi jebe a robim to iste
-            if ((_rowCounter-1)  == buttonID)
+            if ((_rowCounter - 1) == buttonID)
             {
                 _queryPriority = _queryPriority.Insert(index + 3, " || p" + _rowCounter);
             }
@@ -179,10 +258,6 @@ public class CypherQueryHandler : MonoBehaviour
             {
                 _queryPriority = _queryPriority.Insert(index + 4, "|| p" + _rowCounter + ") ");
             }
-        }
-        else
-        {
-            Debug.Log("Som kokot");
         }
 
         _queryPriority += ' ';
@@ -210,5 +285,47 @@ public class CypherQueryHandler : MonoBehaviour
             }
         }
         return count1-count2;
+    }
+
+    public void DeleteQuery()
+    {
+        for (int i = verticalObj.transform.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = verticalObj.transform.GetChild(i).gameObject;
+            if (child.name != "Query Text Field")
+            {
+                Destroy(child);
+            }
+        }
+        StartCoroutine(GetGraphProperties());
+        queryTextField.text = "Cypher query";
+    }
+    
+    private IEnumerator GetGraphProperties()
+    {
+        using (HttpClient client = new HttpClient(new HttpClientHandler
+               {
+                   CookieContainer = CookieContainer,
+                   UseCookies = true
+               }))
+        {
+            var response1 = client.GetAsync(apiUrl + "properties/" + 
+                                            getGraphDropdown.options[getGraphDropdown.value].text);
+            yield return response1;
+
+            if (response1.Result.IsSuccessStatusCode)
+            {
+                _responseData1 = response1.Result.Content.ReadAsStringAsync().Result;
+                yield return _responseData1;
+                Debug.Log(_responseData1);
+                CreateDictionary();
+                UpdateDropdown();
+                CreateQueryRow();
+            }
+            else
+            {
+                Console.WriteLine($"Error: {response1.Result.StatusCode} - {response1.Result.ReasonPhrase}");
+            }
+        }
     }
 }

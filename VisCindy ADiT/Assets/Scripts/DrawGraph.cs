@@ -6,7 +6,10 @@ using UnityEngine;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using TMPro;
+using Unity.VisualScripting;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 [System.Serializable]
 public class QueryPayload
@@ -14,7 +17,7 @@ public class QueryPayload
     public string query;
 }
 
-public class DrawGraph : MonoBehaviour
+public class DrawGraph : MonoBehaviour, ISingleton
 {
     public GameObject graphPrefab;
     private int _counter = 0;
@@ -26,6 +29,9 @@ public class DrawGraph : MonoBehaviour
     };
     public string apiUrl = "http://127.0.0.1:5000/api/";
     private Dictionary<string, NodeObject> _nodesDictionary = new Dictionary<string, NodeObject>();
+    
+    [SerializeField] private TMP_Dropdown layoutDropdown;
+    [SerializeField] private TMP_Dropdown getGraphDropdown;
 
     private bool _loadedFlag = true;
     private string _responseData1;
@@ -59,10 +65,10 @@ public class DrawGraph : MonoBehaviour
         StartCoroutine(ProcessGraphData()); 
     }
 
-    public void CreateGraphLayout(string layout)
+    public void CreateGraphLayout()
     {
         ResetGraph();
-        StartCoroutine(ProcessGraphDataLayout(layout));
+        StartCoroutine(ProcessGraphDataLayout(layoutDropdown.options[layoutDropdown.value].text));
     }
 
     private IEnumerator ProcessGraphDataLayout(string layout)
@@ -105,7 +111,9 @@ public class DrawGraph : MonoBehaviour
                    UseCookies = true
                }))
         {
-            var response1 = client.GetAsync(apiUrl + "graph/1");
+            Debug.Log(getGraphDropdown.options[getGraphDropdown.value].text);
+            var response1 = client.GetAsync(apiUrl + "graph/" + 
+                                            getGraphDropdown.options[getGraphDropdown.value].text);
             yield return response1;
 
             if (response1.Result.IsSuccessStatusCode)
