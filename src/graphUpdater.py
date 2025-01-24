@@ -79,7 +79,6 @@ class GraphUpdater(Resource):
             self.db_client.execute_query(query)
 
     def delete_relationship(self, change):
-        # Example: Delete a relationship
         from_id = change.get("fromNodeId")
         to_id = change.get("toNodeId")
         rel_type = change.get("relationshipType", "RELATED_TO")
