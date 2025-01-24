@@ -55,7 +55,9 @@ class GraphUpdater(Resource):
         node_id = change.get("properties").get("nodeId")
         if node_id:
             query = f"MATCH (n) WHERE id(n) = {node_id} DETACH DELETE n"
-            self.db_client.execute_query(query)
+            result = self.db_client.execute_query(query)
+        if result.summary.counters.nodes_deleted == 0:
+                return {"error": f"No node found with ID {node_id}"}, 404
 
     def update_property(self, change):
         # Example: Update a node's property
@@ -83,10 +85,9 @@ class GraphUpdater(Resource):
         # Example: Delete a relationship
         from_id = change.get("fromNodeId")
         to_id = change.get("toNodeId")
-        rel_type = change.get("relationshipType", "RELATED_TO")
         if from_id and to_id:
             query = f"""
-            MATCH (a)-[r:{rel_type}]->(b)
+            MATCH (a)-[r]->(b)
             WHERE id(a) = {from_id} AND id(b) = {to_id}
             DELETE r
             """
