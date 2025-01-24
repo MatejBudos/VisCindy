@@ -178,18 +178,15 @@ public class DrawGraph : MonoBehaviour
                     {
                         _nodesDictionary[node.Key].UIedges.Add(targetNode, edge);
                         activeEdges.Add(edge);
-                        if(_counterEdges < Int32.Parse(_nodesDictionary[node.Key].edges_id[enumerator]))
-                        {
-                            _counterEdges = Int32.Parse(_nodesDictionary[node.Key].edges_id[enumerator]);
-                        }
                     }
                 }
                 else
                 {
                     Debug.LogWarning("Not enough lines in the pool!");
                 }
-                enumerator++;
+                enumerator++;                
             }
+            _counterEdges += enumerator;
         }
     }
 
@@ -507,7 +504,7 @@ public class DrawGraph : MonoBehaviour
                     new JProperty("actionType", commands[i].command),                    
                     new JProperty("properties",
                         new JObject(
-                            new JProperty("graphId", Int32.Parse(commands[i].nodeName)),
+                            new JProperty("graphId", commands[i].nodeName),
                             new JProperty("x", commands[i].gameObject.transform.position.x),
                             new JProperty("y", commands[i].gameObject.transform.position.y),
                             new JProperty("z", commands[i].gameObject.transform.position.z)
@@ -534,8 +531,8 @@ public class DrawGraph : MonoBehaviour
                     new JProperty("actionType", commands[i].command),
                     new JProperty("properties",
                         new JObject(
-                            new JProperty("fromNodeId", Int32.Parse(commands[i].fromNode)),
-                            new JProperty("toNodeId", Int32.Parse(commands[i].toNode)))));
+                            new JProperty("fromNodeId", commands[i].fromNode),
+                            new JProperty("toNodeId", commands[i].toNode))));
                 ((JArray)sendToDB["changes"]).Add(objekt);
             }
             //if command is RemoveNode we must add JSON node for removing and all edges which go to or from him,
@@ -547,7 +544,7 @@ public class DrawGraph : MonoBehaviour
                     new JProperty("actionType", commands[i].command),
                     new JProperty("properties",
                         new JObject(
-                            new JProperty("nodeId", Int32.Parse(commands[i].nodeName)))));
+                            new JProperty("nodeId", commands[i].nodeName))));
                 ((JArray)sendToDB["changes"]).Add(objekt);
                 //destroy all edge gameobject which start from our node
                 foreach(KeyValuePair<string,GameObject> edge in _nodesDictionary[commands[i].nodeName].UIedges)
@@ -556,20 +553,20 @@ public class DrawGraph : MonoBehaviour
                 }
                 int enumerator = 0;
                 //Add all edges to json, which starts from our node
-                foreach (string edge_id in _nodesDictionary[commands[i].nodeName].edges_id)
-                {
-                    //create json file
-                    objekt = new JObject(
-                    new JProperty("actionType", "deleteRelationship"),
-                    new JProperty("properties",
-                        new JObject(
-                            new JProperty("graphId",Int32.Parse(edge_id)),
-                            new JProperty("fromNodeId", Int32.Parse(commands[i].nodeName)),
-                            new JProperty("toNodeId", Int32.Parse(_nodesDictionary[commands[i].nodeName].edges[enumerator])))));
+                //foreach (string edge_id in _nodesDictionary[commands[i].nodeName].edges_id)
+                //{
+                //    //create json file
+                //    objekt = new JObject(
+                //    new JProperty("actionType", "deleteRelationship"),
+                //    new JProperty("properties",
+                //        new JObject(
+                //            //new JProperty("graphId",edge_id),
+                //            new JProperty("fromNodeId", commands[i].nodeName),
+                //            new JProperty("toNodeId", _nodesDictionary[commands[i].nodeName].edges[enumerator]))));
 
-                    ((JArray)sendToDB["changes"]).Add(objekt);
-                    enumerator++;
-                }
+                //    ((JArray)sendToDB["changes"]).Add(objekt);
+                //    enumerator++;
+                //}
                 //Add all edges to json, which come to our node
                 foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
                 {
@@ -581,15 +578,15 @@ public class DrawGraph : MonoBehaviour
                             if (edge.Key.Equals(commands[i].nodeName))
                             {
                                 //create json file
-                                objekt = new JObject(
-                                    new JProperty("actionType", "deleteRelationship"),
-                                    new JProperty("properties",
-                                        new JObject(
-                                            new JProperty("graphId",Int32.Parse(node.Value.edges_id[enumerator])),
-                                            new JProperty("fromNodeId", Int32.Parse(node.Key)),
-                                            new JProperty("toNodeId", Int32.Parse(edge.Key)))));
+                                //objekt = new JObject(
+                                //    new JProperty("actionType", "deleteRelationship"),
+                                //    new JProperty("properties",
+                                //        new JObject(
+                                //            //new JProperty("graphId",node.Value.edges_id[enumerator]),
+                                //            new JProperty("fromNodeId", node.Key),
+                                //            new JProperty("toNodeId", edge.Key))));
 
-                                ((JArray)sendToDB["changes"]).Add(objekt);
+                                //((JArray)sendToDB["changes"]).Add(objekt);
                                 
                                 //Destroy part
                                 Destroy(edge.Value);
@@ -624,9 +621,8 @@ public class DrawGraph : MonoBehaviour
                     new JProperty("actionType", commands[i].command),
                     new JProperty("properties",
                         new JObject(
-                            new JProperty("graphId",Int32.Parse(edge_id),
-                            new JProperty("fromNodeId", Int32.Parse(commands[i].fromNode)),
-                            new JProperty("toNodeId", Int32.Parse(commands[i].toNode))))));
+                            new JProperty("fromNodeId", commands[i].fromNode),
+                            new JProperty("toNodeId", commands[i].toNode))));
 
                 ((JArray)sendToDB["changes"]).Add(objekt);
                 

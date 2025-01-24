@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using UnityEngine;
 
 public class ReadingJson
 {
@@ -11,14 +12,14 @@ public class ReadingJson
         Dictionary<string, NodeObject> nodesDictionary = new Dictionary<string, NodeObject>();
 
         var data = JsonConvert.DeserializeObject<JObject>(jsonContent);
-              
+        Debug.Log(data);  
         if (data["nodes"] is JObject nodes)
         {
             foreach (var node in nodes)
-            {
-                string nodeId = node.Key;
+            {                
                 if (node.Value is JObject nodeData && nodeData.ContainsKey("coords"))
                 {
+                    string nodeId = nodeData["NeoId"].ToString();
                     if (nodeData["coords"] is JArray coords)
                     {
                         nodesDictionary.Add(nodeId, 
@@ -32,7 +33,7 @@ public class ReadingJson
         {
             foreach (var edge in edges)
             {
-                string edgeID = edge.Key;
+                string edgeID = edge.Value["NeoId"].ToString() ;
                 var start = edge.Value?["start"] as JArray;
                 var end = edge.Value?["end"] as JArray;
                 string nodeStart = " ";
