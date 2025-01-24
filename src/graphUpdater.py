@@ -51,14 +51,15 @@ class GraphUpdater(Resource):
 
     def delete_node(self, change):
         # Example: Delete a node by ID or property
-        node_id = change.get("nodeId")
+        node_id = change.get("properties").get("nodeId")
         if node_id:
-            query = f"MATCH (n) WHERE id(n) = {node_id} DETACH DELETE n"
-            self.db_client.execute_query(query)
+            query = f"""MATCH (n) WHERE elementId(n) = "{node_id}" DETACH DELETE n"""
+            result = self.db_client.execute_query(query)
 
     def update_property(self, change):
         # Example: Update a node's property
-        node_id = change.get("nodeId")
+        node_id = change.get("properties").get("nodeId")
+
         properties = change.get("properties", {})
         if node_id and properties:
             properties_query = ", ".join(f"n.{key} = '{value}'" for key, value in properties.items())
@@ -67,26 +68,27 @@ class GraphUpdater(Resource):
 
     def add_relationship(self, change):
         # Example: Add a relationship between nodes
-        from_id = change.get("fromNodeId")
-        to_id = change.get("toNodeId")
+        from_id = change.get("properties").get("fromNodeId")
+        to_id = change.get("properties").get("toNodeId")
+
         rel_type = change.get("relationshipType", "RELATED_TO")
         if from_id and to_id:
             query = f"""
             MATCH (a), (b)
-            WHERE id(a) = {from_id} AND id(b) = {to_id}
+            WHERE elementId(a) = "{from_id}" AND elementId(b) = "{to_id}"
             CREATE (a)-[:{rel_type}]->(b)
             """
             self.db_client.execute_query(query)
 
     def delete_relationship(self, change):
-        # Example: Delete a relationship
-        from_id = change.get("fromNodeId")
-        to_id = change.get("toNodeId")
-        rel_type = change.get("relationshipType", "RELATED_TO")
+        from_id = change.get("properties").get("fromNodeId")
+        to_id = change.get("properties").get("toNodeId")
         if from_id and to_id:
             query = f"""
-            MATCH (a)-[r:{rel_type}]->(b)
-            WHERE id(a) = {from_id} AND id(b) = {to_id}
-            DELETE r
+            MATCH (a)-[r]-(b)
+            WHERE 
+            elementId(a) = "{from_id}" AND 
+            elementId(b) = "{to_id}"
+            delete r
             """
             self.db_client.execute_query(query)

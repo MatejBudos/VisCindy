@@ -1,0 +1,38 @@
+{
+    "changes": [
+      {
+        "actionType": "addNode",
+        "label": "Person",
+        "properties": {
+          "name": "Alice",
+          "age": "30"
+        }
+      },
+      {
+        "actionType": "addNode",
+        "label": "Person",
+        "properties": {
+          "name": "Bob",
+          "age": "35"
+        }
+      },
+      {
+        "actionType": "addRelationship",
+        "fromNodeId": 1,
+        "toNodeId": 2,
+        "relationshipType": "FRIEND"
+      },
+      {
+        "actionType": "updateProperty",
+        "nodeId": 1,
+        "properties": {
+          "city": "New York"
+        }
+      },
+      {
+        "actionType": "deleteNode",
+        "nodeId": 2
+      }
+    ]
+  }
+  
