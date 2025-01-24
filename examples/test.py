@@ -1,41 +1,41 @@
 import requests
 import time
+import json
 URL = 'http://127.0.0.1:5000/api/'
 session = requests.Session()
 
-q = "MATCH (n)\
-            OPTIONAL MATCH (n)-[r]->(m)\
-            WITH\
-            Id(n) AS id,\
-            collect(CASE\
-                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r)}\
-                ELSE NULL\
-            END) AS edges\
-            RETURN\
-            id,\
-            [edge IN edges WHERE edge IS NOT NULL] AS edges;\
-            "
-query = {"query":q}
-query_response = session.post(URL + "query", json=query)
+query_response = session.get(URL + "graph/1")
 
 if query_response.status_code == 200:
-    print("Query response:", query_response.json())
+    response = query_response.json()
+    print("Query response:", response)
 else:
     print("Query failed with status code:", query_response.status_code)
 
-response = query_response.json()
-print(response)
 
-
-layout_type = "grid"   # Options: grid, sphere, kk, fr, random
-graph = {"data":query_response.json()["data"], "layout_type": layout_type}
-
-layout_response = session.post(URL +"layouter",json=graph)
-if layout_response.status_code == 200:
-    print("Layout response:", layout_response.json())
+query = """
+        MATCH (n {graphId: 1})
+        OPTIONAL MATCH (n)-[r]->(m)
+        WITH
+            Id(n) AS id,
+            elementId(n) as NeoId,
+            collect(CASE
+                WHEN m IS NOT NULL THEN {source: Id(n), target: Id(m), relationship: type(r), NeoId: elementId(r)}
+                ELSE null
+            END) AS edges
+        RETURN
+            id, NeoId,
+            [edge IN edges WHERE edge IS NOT NULL] AS edges;
+        """
+payload = {"query":query}
+query_response = session.post(URL + "graph/query", json=payload)
+if query_response.status_code == 200:
+    response = query_response.json()
+    print("Query response:", response)
 else:
-    print("Layout request failed with status code:", layout_response.status_code)
+    print("Query failed with status code:", query_response.status_code)
 
-# Close the session
-session.close()
 
+
+#with open("graph_data.json", "w") as json_file:
+    #json.dump(response, json_file, indent=4)

@@ -13,13 +13,12 @@ using UnityEngine.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+
 [System.Serializable]
 public class QueryPayload
 {
     public string query;
 }
-
-
 public class DrawGraph : MonoBehaviour, ISingleton
 {
     public GameObject graphPrefab;
@@ -45,6 +44,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
     
     [SerializeField] private TMP_Dropdown layoutDropdown;
     [SerializeField] private TMP_Dropdown getGraphDropdown;
+
     private bool _loadedFlag = true;
     private string _responseData1;
 
@@ -117,13 +117,9 @@ public class DrawGraph : MonoBehaviour, ISingleton
     {
         using (HttpClient client = new HttpClient(new HttpClientHandler
         {
-            CookieContainer = CookieContainer,
-            UseCookies = true
-        }))
-        {
+
             Debug.Log(getGraphDropdown.options[getGraphDropdown.value].text);
-            var response1 = client.GetAsync(apiUrl + "graph/" +
-                                            getGraphDropdown.options[getGraphDropdown.value].text);
+            var response1 = client.GetAsync(apiUrl + "graph/" + getGraphDropdown.options[getGraphDropdown.value].text);
             yield return response1;
 
             if (response1.Result.IsSuccessStatusCode)
@@ -692,13 +688,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 // Serialize JObject na JSON string
                 string json = sendToDB.ToString();
 
-                // Log JSON pred odoslaním
+                // Log JSON pred odoslanï¿½m
                 Debug.Log("Preparing to send JSON: " + json);
 
                 // Pripravte obsah pre POST request
                 StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                // Odošlite POST request
+                // Odoï¿½lite POST request
                 HttpResponseMessage response = await client.PostAsync(url, content);
 
                 // Spracovanie odpovede
@@ -709,7 +705,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 }
                 else
                 {
-                    // Ak server vráti chybu, logujte jej detaily
+                    // Ak server vrï¿½ti chybu, logujte jej detaily
                     string errorResponse = await response.Content.ReadAsStringAsync();
                     Debug.LogError($"Error: {response.StatusCode} - {response.ReasonPhrase}");
                     Debug.LogError($"Response content: {errorResponse}");
@@ -722,12 +718,12 @@ public class DrawGraph : MonoBehaviour, ISingleton
             }
             catch (JsonSerializationException jsonEx)
             {
-                // Log chyby pri serializácii JSON-u
+                // Log chyby pri serializï¿½cii JSON-u
                 Debug.LogError("JSON Serialization Exception: " + jsonEx.Message);
             }
             catch (Exception e)
             {
-                // Log všeobecné výnimky
+                // Log vï¿½eobecnï¿½ vï¿½nimky
                 Debug.LogError("Exception: " + e.Message);
             }
         }

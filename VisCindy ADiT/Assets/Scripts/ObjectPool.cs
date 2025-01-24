@@ -25,23 +25,21 @@ public class ObjectPool : MonoBehaviour
     
     private void Update()
     {
-        // Check if the "Nodes" pool needs refilling
         if (poolDictionary.ContainsKey("Nodes") && poolDictionary["Nodes"].Count < threshold)
         {
             for (int i = 0; i < refillAmount; i++)
             {
-                GameObject obj = Instantiate(nodePrefab, container.transform); // Use container.transform
+                GameObject obj = Instantiate(nodePrefab, container.transform);
                 obj.SetActive(false);
                 poolDictionary["Nodes"].Enqueue(obj);
             }
         }
 
-        // Check if the "Lines" pool needs refilling
         if (poolDictionary.ContainsKey("Lines") && poolDictionary["Lines"].Count < threshold)
         {
             for (int i = 0; i < refillAmount; i++)
             {
-                GameObject obj = Instantiate(linePrefab, container.transform); // Use container.transform
+                GameObject obj = Instantiate(linePrefab, container.transform);
                 obj.SetActive(false);
                 poolDictionary["Lines"].Enqueue(obj);
             }
@@ -59,7 +57,6 @@ public class ObjectPool : MonoBehaviour
                 GameObject obj = Instantiate(prefab);
                 obj.SetActive(false);
 
-                // Set the parent of the pooled object
                 if (container != null)
                 {
                     obj.transform.SetParent(container.transform);
@@ -83,7 +80,6 @@ public class ObjectPool : MonoBehaviour
         {
             switch (poolKey)
             {
-                //if empty Pull create new Line or Node
                 case "Nodes":
                 {
                     GameObject obj = Instantiate(nodePrefab);
@@ -98,9 +94,6 @@ public class ObjectPool : MonoBehaviour
                     return null;
             }
         }
-        //
-        // Debug.LogWarning($"Pool with key {poolKey} is empty or doesn't exist.");
-        // return null;
     }
 
     public void ReturnObject(GameObject obj, string poolKey)

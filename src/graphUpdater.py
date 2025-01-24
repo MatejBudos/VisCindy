@@ -59,6 +59,7 @@ class GraphUpdater(Resource):
     def update_property(self, change):
         # Example: Update a node's property
         node_id = change.get("properties").get("nodeId")
+
         properties = change.get("properties", {})
         if node_id and properties:
             properties_query = ", ".join(f"n.{key} = '{value}'" for key, value in properties.items())
@@ -69,6 +70,7 @@ class GraphUpdater(Resource):
         # Example: Add a relationship between nodes
         from_id = change.get("properties").get("fromNodeId")
         to_id = change.get("properties").get("toNodeId")
+
         rel_type = change.get("relationshipType", "RELATED_TO")
         if from_id and to_id:
             query = f"""
@@ -79,11 +81,9 @@ class GraphUpdater(Resource):
             self.db_client.execute_query(query)
 
     def delete_relationship(self, change):
-        # Example: Delete a relationship
         from_id = change.get("properties").get("fromNodeId")
         to_id = change.get("properties").get("toNodeId")
         if from_id and to_id:
-
             query = f"""
             MATCH (a)-[r]-(b)
             WHERE 
