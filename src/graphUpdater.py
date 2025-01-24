@@ -51,14 +51,15 @@ class GraphUpdater(Resource):
 
     def delete_node(self, change):
         # Example: Delete a node by ID or property
-        node_id = change.get("nodeId")
+
+        node_id = change.get("properties").get("nodeId")
         if node_id:
             query = f"MATCH (n) WHERE id(n) = {node_id} DETACH DELETE n"
             self.db_client.execute_query(query)
 
     def update_property(self, change):
         # Example: Update a node's property
-        node_id = change.get("nodeId")
+        node_id = change.get("properties").get("nodeId")
         properties = change.get("properties", {})
         if node_id and properties:
             properties_query = ", ".join(f"n.{key} = '{value}'" for key, value in properties.items())
