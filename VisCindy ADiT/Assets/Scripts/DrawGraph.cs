@@ -115,7 +115,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private IEnumerator GetGraphData()
     {
-        using (HttpClient client = new HttpClient(new HttpClientHandler))
+        using (HttpClient client = new HttpClient(new HttpClientHandler()))
         {
 
             Debug.Log(getGraphDropdown.options[getGraphDropdown.value].text);
