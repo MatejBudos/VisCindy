@@ -32,13 +32,16 @@ class Layouter(Resource):
             source = edge.source_vertex
             target = edge.target_vertex
             edges[ edge.index ] = { "start": source[ "coords" ], 
-                                    "end": target[ "coords" ] }
+                                    "end": target[ "coords" ],
+                                     "NeoId": edge["NeoId"] }
         return edges
 
     def export( self, graph ):
         data = { "nodes":{}, "edges":{} }
         for node in graph.vs:
-            data[ "nodes" ][ node.index ] = { "coords": node["coords"] }
+            data[ "nodes" ][ node.index ] = {   "coords": node["coords"], 
+                                                "NeoId": node["NeoId"]}
+
        
         data[ "edges" ] = self.route_edges( graph )
         #with open("graph_data.json", "w") as f:
@@ -58,13 +61,20 @@ class Layouter(Resource):
     def records_to_Igraph( self, records : dict ) -> ig.Graph:
         graph = ig.Graph()
         edges = []
+        NeoEdgeIds = []
         for record in records:
             vertex = str(record['id'])
             graph.add_vertex( vertex )
+            
+            #add attribute to node "NeoId" : record["NeoId"]
+            graph.vs.find(name=vertex)["NeoId"] = record["NeoId"]
             for edge in record['edges']:
                 edges.append( ( vertex, str(edge['target']) ) )
+                NeoEdgeIds.append( edge['NeoId'] )
         
         graph.add_edges( edges )
+        for index, EdgeId in enumerate( NeoEdgeIds ):
+            graph.es[ index ]["NeoId"] = EdgeId
         return graph   
 
 

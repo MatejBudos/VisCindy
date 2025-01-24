@@ -20,7 +20,7 @@ class GraphProperties(Resource):
         RETURN COLLECT(DISTINCT type(r)) AS relation_types
         """
         q3 = """
-        MATCH (n {graphId: $graphId})-[r]->()
+        MATCH (n {graphId: $graphId})
         UNWIND keys(n) AS node_keys
         UNWIND labels(n) AS node_labels
         RETURN collect(DISTINCT node_keys) AS node_properties, 
