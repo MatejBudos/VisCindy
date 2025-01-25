@@ -501,12 +501,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
             //if change is addNode is enough to add him just to JSON no backround proceses are needed
             if (commands[i].command.Equals("addNode"))
             {
+                string selectedGraphId = getGraphDropdown.options[getGraphDropdown.value].text;
                 //create json file   
                 JObject objekt = new JObject(
                     new JProperty("actionType", commands[i].command),                    
                     new JProperty("properties",
                         new JObject(
-                            new JProperty("graphId", commands[i].nodeName),
+                            new JProperty("graphId", selectedGraphId),
                             new JProperty("x", commands[i].gameObject.transform.position.x),
                             new JProperty("y", commands[i].gameObject.transform.position.y),
                             new JProperty("z", commands[i].gameObject.transform.position.z)
