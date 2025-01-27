@@ -136,7 +136,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
         
         foreach (KeyValuePair<string, NodeObject> node in forAdd)
         {
-            GameObject sphere = ObjectPool.SharedInstance.GetObject(SPHERE_POOL_KEY);
+            GameObject sphere = spherePool.Dequeue();
             if (sphere != null)
             {
                 sphere.SetActive(true);
