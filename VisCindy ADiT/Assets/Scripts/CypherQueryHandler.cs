@@ -87,7 +87,7 @@ public class CypherQueryHandler : MonoBehaviour
 
     public void FinaliseQuery()
     {
-        _finalQuery = "";
+        _finalQuery = "WHERE ";
         int pointer = 0;
         foreach (char c in _queryPriority)
         {
@@ -112,7 +112,7 @@ public class CypherQueryHandler : MonoBehaviour
                     pointer++;
                 }
 
-                _finalQuery += "data from p" + pNum;
+                _finalQuery += " " + _getPData(Int32.Parse(pNum)) + " ";
             }
             else if (c == '&')
             {
@@ -136,6 +136,22 @@ public class CypherQueryHandler : MonoBehaviour
         }
         
         queryTextField.text = _finalQuery;
+    }
+
+    private string _getPData(int rowNum)
+    {
+        string childName = "QueryRow" + rowNum;
+        var child = verticalObj.transform.Find(childName);
+        var atributeDropdown = child.transform.Find("Atribute(Clone)").GetComponent<TMP_Dropdown>();
+        var operatorDropdown1 = child.transform.Find("Operator(Clone)").GetComponent<TMP_Dropdown>();
+        string valueText1 = child.transform.Find("Values(Clone)").GetComponent<TMP_InputField>().text;
+        string atribute = atributeDropdown.options[atributeDropdown.value].text;
+        string operator1 = operatorDropdown1.options[operatorDropdown1.value].text;
+        if (valueText1 == "")
+        {
+            valueText1 = "0";
+        }
+        return atribute + " " + operator1 + " " + valueText1;
     }
 
 

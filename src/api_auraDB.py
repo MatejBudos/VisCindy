@@ -8,7 +8,7 @@ from graphUpdater import GraphUpdater
 from graphGetter import GraphGetter
 
 app = Flask( __name__ )
-app.secret_key = "test123"
+app.secret_key = "test123"  
 api = Api( app )
 query_args = reqparse.RequestParser()
 query_args.add_argument("query", type = str, help = "No query provided")
