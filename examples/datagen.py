@@ -10,11 +10,13 @@ username = data["Username"]
 password = data["NEO4J_PASSWORD"]
 
 driver = GraphDatabase.driver(uri, auth=(username, password))
-
-def create_graph_with_3d_positions(node_count):
+def clear_database():
     with driver.session() as session:
-        # Clear existing data
         session.run("MATCH (n) DETACH DELETE n")
+
+
+def create_graph_with_3d_positions(node_count, graph_id):
+    with driver.session() as session:
         
         # Create nodes with 3D positions
         for i in range(node_count):
@@ -24,18 +26,24 @@ def create_graph_with_3d_positions(node_count):
             
             session.run(
                 """
-                CREATE (n:Node {label: $label, description: $description, x: $x, y: $y, z: $z})
+                CREATE (n:Node {label: $label, description: $description, x: $x, y: $y, z: $z, graphId: $graph_id})
                 """,
-                label=label, description=description, x=x, y=y, z=z
+                label=label, description=description, x=x, y=y, z=z, graph_id = graph_id
             )
         
         print(f"Created {node_count} nodes.")
 
-def generate_random_edges(max_edges):
+def generate_random_edges(max_edges, graph_id):
     
     NodeTypes = ["NodeTypeA", "NodeTypeB", "NodeTypeC" ]
     with driver.session() as session:
-        result = session.run("MATCH (n:Node) RETURN n.label AS label")
+        query = """
+        MATCH (n:Node) 
+        WHERE n.graphId = $graph_id 
+        RETURN n.label AS label
+        """
+        params = {"graph_id": graph_id}
+        result = session.run(query, params)
         nodes = [record["label"] for record in result]
         
         relationShips = ["RelTypeA", "RelTypeB", "RelTypeC" ]
@@ -49,18 +57,20 @@ def generate_random_edges(max_edges):
             relationShip = relationShips[ random.randrange( 3 ) ]
             session.run(
                 """
-                MATCH (n1:Node {label: $source}), (n2:Node {label: $target})
+                MATCH (n1:Node {label: $source, graphId : $graph_id}), (n2:Node {label: $target, graphId : $graph_id})
                 CREATE (n1)-[:CONNECTED {label: $label, description: $description}]->(n2)
                 """,
-                source=source, target=target, relationShip = relationShip, label=label, description=description
+                source=source, target=target, relationShip = relationShip, label=label, description=description, graph_id=graph_id
             )
         
         print(f"Created up to {max_edges} random edges.")
 
 if __name__ == "__main__":
+    graph_count = int(input("Enter the number of graphs to create: "))
     node_count = int(input("Enter the number of nodes to create: "))
     max_edges = int(input("Enter the maximum number of edges to create: "))
-    
-    create_graph_with_3d_positions(node_count)
-    generate_random_edges(max_edges)
+    clear_database()
+    for graph_id in range( 1, graph_count + 1):
+        create_graph_with_3d_positions(node_count, graph_id)
+        generate_random_edges(max_edges, graph_id)
     print("Graph creation complete!")
