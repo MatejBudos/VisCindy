@@ -26,6 +26,7 @@ query = """
         RETURN
             id, NeoId,
             [edge IN edges WHERE edge IS NOT NULL] AS edges;
+        
         """
 payload = {"query":query}
 query_response = session.post(URL + "graph/query", json=payload)
