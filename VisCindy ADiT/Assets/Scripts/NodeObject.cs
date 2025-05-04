@@ -5,8 +5,11 @@ public class NodeObject
 {
     public string id;
     public float x, y, z;
+
     public List<string> edges = new List<string>();
     public List<string> edges_id = new List<string>();
+
+    public List<string> neighbours= new List<string>();
     public GameObject UInode;
     public Dictionary<string, GameObject> UIedges = new Dictionary<string, GameObject>();
 
