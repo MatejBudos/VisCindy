@@ -62,10 +62,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
         {
             foreach (KeyValuePair<string, GameObject> edge in node.Value.UIedges)
             {
-                LineRenderer lineRenderer = edge.Value.GetComponent<LineRenderer>();
-                lineRenderer.SetPosition(0, node.Value.UInode.transform.position);
-                lineRenderer.SetPosition(1, _nodesDictionary[edge.Key].UInode.transform.position);
-            }
+                if ( _nodesDictionary.ContainsKey(edge.Key) ){
+                    LineRenderer lineRenderer = edge.Value.GetComponent<LineRenderer>();
+                    lineRenderer.SetPosition(0, node.Value.UInode.transform.position);
+                    lineRenderer.SetPosition(1, _nodesDictionary[edge.Key].UInode.transform.position);
+                }
+                }
+             
         }
     }
 
@@ -159,7 +162,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
             {
                 sphere.SetActive(true);
                 sphere.name = node.Key;
-                sphere.transform.position = new Vector3(node.Value.x, node.Value.y, node.Value.z + 2);
+                sphere.transform.position = new Vector3(node.Value.x, node.Value.y, node.Value.z);
                 sphere.transform.SetParent(graphPrefab.transform);
                 VertexSelector vertexSelector = sphere.AddComponent<VertexSelector>();
                 vertexSelector.drawGraph = this;
@@ -402,11 +405,11 @@ public class DrawGraph : MonoBehaviour, ISingleton
     {
         if (_nodesDictionary.ContainsKey(nodeKey))
         {
-            GameObject node = _nodesDictionary[nodeKey].UInode;
-            SetVisibilityNode(node, false);
+            NodeObject node = _nodesDictionary[nodeKey];
+            SetVisibilityNode(node.UInode, false);
             foreach (KeyValuePair<string,NodeObject> vrchol in _nodesDictionary)
             {
-                foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
+                foreach (KeyValuePair<string, GameObject> edge in vrchol.Value.UIedges)
                 {
                     if(vrchol.Key.Equals(nodeKey) || edge.Key.Equals(nodeKey))
                     {
@@ -414,7 +417,9 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     }                    
                 }
             }
-            Command command = new Command(node, "deleteNode");
+            // do commandu pridat cely nodeobject nie len uinode?
+            Command command = new Command(node.UInode, "deleteNode", node : node);
+            _nodesDictionary.Remove(nodeKey);
             command.nodeName = nodeKey;
             undo.Push(command);
             redo.Clear();
@@ -494,10 +499,12 @@ public class DrawGraph : MonoBehaviour, ISingleton
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
+
             } else if (aktualCommand.command.Equals("addRelationship"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
+
             } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, true);

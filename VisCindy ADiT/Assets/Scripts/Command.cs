@@ -9,8 +9,10 @@ public class Command
     public string nodeName;
     public string fromNode;
     public string toNode;
-    public Command(GameObject gameObject, string command, string fromNode = "", string toNode = "", string nodeName="")
+    public NodeObject nodeObject;
+    public Command(GameObject gameObject, string command, string fromNode = "", string toNode = "", string nodeName="", NodeObject node = null)
     {
+        this.nodeObject = node;
         this.gameObject = gameObject;
         this.command = command;
         this.fromNode = fromNode;

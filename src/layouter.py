@@ -81,7 +81,8 @@ class Layouter(Resource):
                 
         for edge in edges:
             source, target = edge
-            graph.add_edge( id_dict[source], id_dict[target] )
+            if id_dict.get(target, None):
+                graph.add_edge( id_dict[source], id_dict[target] )
 
         #dummy hodnoty pre teraz
         for index in range(len(graph.es)):
