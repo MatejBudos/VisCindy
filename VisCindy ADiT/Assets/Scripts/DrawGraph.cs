@@ -418,9 +418,8 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 }
             }
             // do commandu pridat cely nodeobject nie len uinode?
-            Command command = new Command(node.UInode, "deleteNode", node : node);
+            Command command = new Command(node.UInode, "deleteNode", nodeName: nodeKey, node : node);
             _nodesDictionary.Remove(nodeKey);
-            command.nodeName = nodeKey;
             undo.Push(command);
             redo.Clear();
         }
@@ -508,6 +507,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
             } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, true);
+                _nodesDictionary[aktualCommand.nodeName] = aktualCommand.nodeObject;
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
                 {
                     foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
@@ -544,10 +544,9 @@ public class DrawGraph : MonoBehaviour, ISingleton
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
 
-                /*foreach (GameObject edge in _nodesDictionary[aktualCommand.nodeName].UIedges.Values){
-                    SetVisibilityEdge( edge, false );
-                }*/
                 
+                //pri undo/ redo sa deletnuty node vrati naspat no ak sa medzi tym urobil relayout
+                //tak bude na prekryty s nejakym inym node. bud drbat na to alebo mu nastavit pri undo redo nejaku inu poziciu
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
                 {
                     foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
@@ -558,7 +557,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                         }
                     }
                 }
-               
+                _nodesDictionary.Remove(aktualCommand.nodeName);
                 undo.Push(aktualCommand);
             }
             else if (aktualCommand.command.Equals("deleteRelationship"))
