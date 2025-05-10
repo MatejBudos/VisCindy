@@ -62,29 +62,33 @@ public class DrawGraph : MonoBehaviour, ISingleton
         {
             foreach (KeyValuePair<string, GameObject> edge in node.Value.UIedges)
             {
-                LineRenderer lineRenderer = edge.Value.GetComponent<LineRenderer>();
-                lineRenderer.SetPosition(0, node.Value.UInode.transform.position);
-                lineRenderer.SetPosition(1, _nodesDictionary[edge.Key].UInode.transform.position);
-            }
+                if ( _nodesDictionary.ContainsKey(edge.Key) ){
+                    LineRenderer lineRenderer = edge.Value.GetComponent<LineRenderer>();
+                    lineRenderer.SetPosition(0, node.Value.UInode.transform.position);
+                    lineRenderer.SetPosition(1, _nodesDictionary[edge.Key].UInode.transform.position);
+                }
+                }
+             
         }
     }
 
     public void CreateGraphFromAPI()
     {
         ResetGraph();
+        ResetPool();
         StartCoroutine(ProcessGraphData());
     }
 
     public void CreateGraphLayout()
     {
-        ResetGraph();
+        ResetPool();
         StartCoroutine(ProcessGraphDataLayout(layoutDropdown.options[layoutDropdown.value].text));
     }
 
     private IEnumerator ProcessGraphDataLayout(string layout)
     {
         yield return StartCoroutine(LayoutGraph(layout));
-
+        ResetGraph();
         Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
         foreach (var node in ReadingJson.ReadJson(_responseData1))
         {
@@ -95,6 +99,16 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
         _loadedFlag = true;
         VisualizeGraph(forAdd);
+    }
+    void PrintPoolCounts(){
+    int nodeCount = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY].Count;
+    int lineCount = ObjectPool.SharedInstance.poolDictionary[LINE_POOL_KEY].Count;
+    foreach (var kvp in _nodesDictionary)
+    {
+        Debug.Log($"Key: {kvp.Key}, Value: {kvp.Value}");
+    }
+
+    Debug.Log($"Pool Counts -> Nodes: {nodeCount}, Lines: {lineCount}");
     }
 
     private IEnumerator ProcessGraphData()
@@ -115,6 +129,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private IEnumerator GetGraphData()
     {
+        //PrintPoolCounts();
         using (HttpClient client = new HttpClient(new HttpClientHandler()))
         {
 
@@ -154,6 +169,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 _nodesDictionary[node.Key].UInode = sphere;
                 activeNodes.Add(sphere);
             }
+            
             else
             {
                 Debug.LogWarning("Not enough spheres in the pool!");
@@ -175,12 +191,18 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     LineRenderer lr = edge.GetComponent<LineRenderer>();
                     lr.positionCount = 0;
                     lr.positionCount = 2;
-
-                    if (!_nodesDictionary[node.Key].UIedges.ContainsKey(targetNode))
+                    NodeObject nodeObj = _nodesDictionary[node.Key];
+                    if (!nodeObj.UIedges.ContainsKey(targetNode))
                     {
-                        _nodesDictionary[node.Key].UIedges.Add(targetNode, edge);
+                        
+                        nodeObj.UIedges.Add(targetNode, edge);
                         activeEdges.Add(edge);
                     }
+                    if(!nodeObj.neighbours.Contains(targetNode)){
+                        nodeObj.neighbours.Add(targetNode);
+                    }
+                  
+                    
                 }
                 else
                 {
@@ -190,10 +212,52 @@ public class DrawGraph : MonoBehaviour, ISingleton
             }
             _counterEdges += enumerator;
         }
+        //PrintPoolCounts();
     }
 
     public IEnumerator LayoutGraph(string layoutType)
+
     {
+
+        Dictionary<string, List<string>> payload = new Dictionary<string, List<string>>();
+
+        Debug.Log($"_nodesDictionary has {_nodesDictionary.Count} entries.");
+        foreach (var kvp in _nodesDictionary)
+        {
+            string nodeId = kvp.Key;
+            List<string> neighbours = kvp.Value.neighbours;
+            payload[nodeId] = neighbours;
+        }
+
+        
+        string json = JsonConvert.SerializeObject(new Wrapper(payload));
+        Debug.Log(json);
+        using (UnityWebRequest request = new UnityWebRequest(apiUrl + "layouter/" + layoutType, "POST"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("POST successful: " + request.downloadHandler.text);
+                _responseData1 = request.downloadHandler.text;
+            }
+            else
+            {
+                Debug.LogError("POST failed: " + request.error);
+            }
+        } 
+ 
+
+        /*
+        foreach (KeyValuePair<string, NodeObject> entry in _nodesDictionary)
+        {
+            Console.WriteLine($"Key: {entry.Key}, Value: {entry.Value}");
+        }
         using (HttpClient client = new HttpClient(new HttpClientHandler
         {
             CookieContainer = CookieContainer,
@@ -214,11 +278,16 @@ public class DrawGraph : MonoBehaviour, ISingleton
             }
 
         }
+        */
     }
 
     public void ResetGraph()
     {
         _nodesDictionary = new Dictionary<string, NodeObject>();
+        
+    }
+    public void ResetPool()
+    {
         foreach (GameObject node in activeNodes)
         {
             ObjectPool.SharedInstance.ReturnObject(node, SPHERE_POOL_KEY);
@@ -254,6 +323,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
         {
             Debug.LogWarning("Not enough spheres in the pool!");
         }
+        //PrintPoolCounts();
     }
 
     public void AddEdge()
@@ -328,17 +398,18 @@ public class DrawGraph : MonoBehaviour, ISingleton
             undo.Push(new Command(edge, "deleteRelationship",toNode,fromNode));
             redo.Clear();
         }
+        //PrintPoolCounts();
     }
 
     private void DisableNode(string nodeKey)
     {
         if (_nodesDictionary.ContainsKey(nodeKey))
         {
-            GameObject node = _nodesDictionary[nodeKey].UInode;
-            SetVisibilityNode(node, false);
+            NodeObject node = _nodesDictionary[nodeKey];
+            SetVisibilityNode(node.UInode, false);
             foreach (KeyValuePair<string,NodeObject> vrchol in _nodesDictionary)
             {
-                foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
+                foreach (KeyValuePair<string, GameObject> edge in vrchol.Value.UIedges)
                 {
                     if(vrchol.Key.Equals(nodeKey) || edge.Key.Equals(nodeKey))
                     {
@@ -346,11 +417,14 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     }                    
                 }
             }
-            Command command = new Command(node, "deleteNode");
-            command.nodeName = nodeKey;
+            // do commandu pridat cely nodeobject nie len uinode?
+            Command command = new Command(node.UInode, "deleteNode", nodeName: nodeKey, node : node);
+            _nodesDictionary.Remove(nodeKey);
             undo.Push(command);
             redo.Clear();
         }
+        //PrintPoolCounts();
+        
     }
 
     // Function to create the edge between two vertices
@@ -401,6 +475,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
         {
             Debug.Log($"Invalid nodes: {fromNode} or {toNode} not found in the graph!");
         }
+        //PrintPoolCounts();
     }
 
     public void SetVisibilityNode(GameObject sphere, bool active)
@@ -423,13 +498,16 @@ public class DrawGraph : MonoBehaviour, ISingleton
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
+
             } else if (aktualCommand.command.Equals("addRelationship"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
+
             } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, true);
+                _nodesDictionary[aktualCommand.nodeName] = aktualCommand.nodeObject;
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
                 {
                     foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
@@ -465,6 +543,10 @@ public class DrawGraph : MonoBehaviour, ISingleton
             } else if (aktualCommand.command.Equals("deleteNode"))
             {
                 SetVisibilityNode(aktualCommand.gameObject, false);
+
+                
+                //pri undo/ redo sa deletnuty node vrati naspat no ak sa medzi tym urobil relayout
+                //tak bude na prekryty s nejakym inym node. bud drbat na to alebo mu nastavit pri undo redo nejaku inu poziciu
                 foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
                 {
                     foreach (KeyValuePair<string, GameObject> edge in _nodesDictionary[vrchol.Key].UIedges)
@@ -475,6 +557,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                         }
                     }
                 }
+                _nodesDictionary.Remove(aktualCommand.nodeName);
                 undo.Push(aktualCommand);
             }
             else if (aktualCommand.command.Equals("deleteRelationship"))

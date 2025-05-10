@@ -13,7 +13,7 @@ class GraphGetter( Resource ):
     def get(self, graphId):
         query = """
         MATCH (n {graphId: $graphId})
-        OPTIONAL MATCH (n)-[r]->(m)
+        OPTIONAL MATCH (n)-[r]-(m)
         WITH
             Id(n) AS id,
             elementId(n) as NeoId,
@@ -28,7 +28,6 @@ class GraphGetter( Resource ):
         params = {"graphId": graphId}
        
         records = self.client.execute_query(query, params)
-        
         if not records:
             return {}, 500
         self.saveToSession( records, graphId )

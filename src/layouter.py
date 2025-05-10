@@ -49,6 +49,8 @@ class Layouter(Resource):
     
         return data
     
+
+    #neaktualne
     def get( self, layout_type : str ):
         if session.get("records", None ) is None:
             return {"Message":"Did not query graph"}, 500
@@ -57,6 +59,35 @@ class Layouter(Resource):
         graph = self.layout( graph, layout_type )
         return self.export( graph ), 200
         
+    def post( self, layout_type : str ):
+        data = request.get_json()["nodes"]
+        graph = self.payload_to_Igraph( data )
+        graph = self.layout( graph, layout_type)
+        return self.export( graph ), 200
+    
+    def payload_to_Igraph( self, payload : dict ) -> ig.Graph:
+        graph = ig.Graph()
+        edges = []
+        id_dict = {}
+        for vertex, element in enumerate( payload, start = 1 ):
+            node = element["node_id"]
+            neighbours = element["edges"]
+            vertex = str(vertex)
+            graph.add_vertex( vertex )
+            id_dict[ node ] = vertex
+            graph.vs.find( name = vertex )["NeoId"] = node
+            for target in neighbours:
+                edges.append( ( node, target ) )
+                
+        for edge in edges:
+            source, target = edge
+            if id_dict.get(target, None):
+                graph.add_edge( id_dict[source], id_dict[target] )
+
+        #dummy hodnoty pre teraz
+        for index in range(len(graph.es)):
+            graph.es[ index ]["NeoId"] = "null"
+        return graph   
 
     def records_to_Igraph( self, records : dict ) -> ig.Graph:
         graph = ig.Graph()
