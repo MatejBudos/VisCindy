@@ -69,12 +69,18 @@ public class ExpandConfigTraversal : Traversal
                 TerminatorNodesParam.Remove( neoNode );
             }
         }
+
     }
     
 }
 
 public class ExpandToXJumpsTraversal : Traversal
 {
+    public ExpandToXJumpsTraversal setJumps( int jumps ){
+        this.maxLevel = jumps;
+        this.minLevel = jumps;
+        return this;
+    }
     protected override string GetFunctionName() => "expandConfig";
 
     protected override Dictionary<string, string> GetCustomConfig() => new(); // žiadne ďalšie
