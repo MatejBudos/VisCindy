@@ -4,8 +4,9 @@ using System;
 using System.Linq;
 public abstract class Traversal
 {
+    //strart node treba definovat vzdy z nejakych matchnutych nodes
     public NeoNode startNode{ get; set; }
-    //public NeoNode endNode{ set; get;}
+    
     public int maxLevel{ get; set; } = 10;
     public int minLevel{ get; set; } = 1;
     public string uniqueness{ get; set; } = "NODE_GLOBAL";
@@ -27,30 +28,48 @@ public abstract class Traversal
         string configString = string.Join(", ", config.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
 
        return
-        "CALL apoc.path." + GetFunctionName() + "($startNode, {" + configString + "})\n" +
-        "YIELD path\n" +
-        "RETURN path";
+        "CALL apoc.path." + GetFunctionName() + "( " + startNode.NeoVar +  ", {" + configString + "})\n" +
+        "YIELD path\n";
 
     }
     protected abstract string GetFunctionName();
     protected abstract Dictionary<string, string> GetCustomConfig();
+
     
 }
 
 public class ExpandConfigTraversal : Traversal
 {
-    public string RelationshipFilter { get; set; } = "\"KNOWS|WORKS_WITH\"";
+    public string RelationshipFilter{get; set; }
     public int Limit { get; set; } = 1;
-    public string TerminatorNodesParam { get; set; } = "endNodes";
-
+    public  List<NeoNode> TerminatorNodesParam { get; set; } = new List<NeoNode>();
+    
+  
     protected override string GetFunctionName() => "expandConfig";
 
-    protected override Dictionary<string, string> GetCustomConfig() => new()
+    protected override Dictionary<string, string> GetCustomConfig()
     {
-        { "relationshipFilter", RelationshipFilter },
-        { "limit", Limit.ToString() },
-        { "terminatorNodes", $"${TerminatorNodesParam}" }
-    };
+        var config = new Dictionary<string, string>
+        {
+            { "limit", Limit.ToString() },
+            { "terminatorNodes", '[' + string.Join(", ", TerminatorNodesParam.Select(n => n.NeoVar )) + ']' },
+        };
+        if ( RelationshipFilter != null ){
+            config["relationshipFilter"] = RelationshipFilter;
+        }
+        return config;
+    }
+    public void AddTerminatorNode( NeoNode node ){
+        TerminatorNodesParam.Add( node );
+    }
+    public void RemoveTerminatorNode( string neoVar ){
+        //toto sa bude dat aj inak/lepsie. zavisi ako to bude v unity spravene
+        foreach( var neoNode in TerminatorNodesParam ){
+            if ( neoNode.NeoVar.Equals( neoVar ) ){
+                TerminatorNodesParam.Remove( neoNode );
+            }
+        }
+    }
     
 }
 

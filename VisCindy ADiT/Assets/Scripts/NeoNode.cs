@@ -4,36 +4,37 @@ using System.Linq;
 
 public class NeoNode{
     
-    public int graphId{get; set;}
-    public string nodeId{get; set;}
-    public string NeoVar {get; set;} = "a";
-    public Dictionary<string,string> attributes{get; set;}
+    //graphid a neovar treba aby boli nastavene
+    public string graphId{get; set;}
+    public string nodeId{get; set;} //presunut do composite
+    public string NeoVar {get; set;}
+    public ICondition attributes{get; set;} // toto bude composite nie str
 
 
-    public NeoNode( string nVar, int gid, string nid, Dictionary<string, string> attr){
-        this.graphId = gid;
-        this.nodeId = nid;
-        this.attributes = attr;
+    public NeoNode( string nVar, string gid, ICondition attr = null ){
         this.NeoVar = nVar;
+        this.graphId = gid;
+        this.attributes = attr;
+        
         
     }
     public string ToCypherMatchProperties()
     {
-    var allProps = new Dictionary<string, string>
-    {
-        { "graphId", graphId.ToString() },
-        { "nodeId", $"'{nodeId}'" }
-    };
-
-    if (attributes != null)
-    {
-        foreach (var kvp in attributes)
+        var allProps = new Dictionary<string, string>
         {
-            allProps[kvp.Key] = $"'{kvp.Value}'";
-        }
-    }
+            { "graphId", graphId.ToString() },
 
-    return "( " + this.NeoVar +" {" +  string.Join(", ", allProps.Select(kvp => $"{kvp.Key}: {kvp.Value}")) + "})";
+        };
+        if (nodeId != null ){
+            allProps["Id"] =  $"'{nodeId}'";
+        }
+
+
+        return "( " + this.NeoVar +" {" +  string.Join(", ", allProps.Select(kvp => $"{kvp.Key}: {kvp.Value}")) + "})";
+    }
+    public string ToCypherNodeConditions(){
+        return attributes.ToQueryString( this.NeoVar );
+
     }
   
 }
