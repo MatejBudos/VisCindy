@@ -27,8 +27,8 @@ public class DrawGraph : MonoBehaviour, ISingleton
     private Queue<GameObject> linePool;
     private Queue<GameObject> spherePool;
     private static readonly CookieContainer CookieContainer = new CookieContainer();
-    private Stack<Command> undo = new Stack<Command>();
-    private Stack<Command> redo = new Stack<Command>();
+    private Stack<Command> undo;
+    private Stack<Command> redo;
     private string firstSelectedKey = null;
     private string secondSelectedKey = null;
     public bool isAddEdgeMode = false;
@@ -152,6 +152,11 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private void VisualizeGraph(Dictionary<string, NodeObject> forAdd)
     {
+        if (undo == null)
+        {
+            undo = new Stack<Command>();
+            redo = new Stack<Command>();
+        }
         Queue<GameObject> spherePool = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY];
         Queue<GameObject> linePool = ObjectPool.SharedInstance.poolDictionary[LINE_POOL_KEY];
 
