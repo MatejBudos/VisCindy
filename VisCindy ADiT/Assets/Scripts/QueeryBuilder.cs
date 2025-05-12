@@ -1,11 +1,12 @@
 using System.Collections.ObjectModel;
-
+using System.Collections.Generic;
+using System.Linq;
 public class CypherQueryBuilder
 {
     private List<NeoNode> MatchNodes = new List<NeoNode>();
     private Traversal _traversal;
     //private List<string> _matchClauses = new();
-    private List<String> finalWhereCondition = new List<string>();
+    private List<string> finalWhereCondition = new List<string>();
     private List<string> _returnClauses = new();
 
     public CypherQueryBuilder SetNeoNode(NeoNode node)

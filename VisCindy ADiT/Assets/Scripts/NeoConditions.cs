@@ -1,7 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 public interface ICondition
 {
     string ToQueryString( string nodeVar );
-    public Boolean isEmpty();
+    public bool isEmpty();
 }
 
 
@@ -26,7 +29,7 @@ public class SimpleCondition : ICondition
 
         return $"{NeoVar}.{Field} {Operator} {formattedValue}";
     }
-    public Boolean isEmpty(){
+    public bool isEmpty(){
         return false;
     }
 }
@@ -50,7 +53,7 @@ public class CompositeCondition : ICondition
     {
         return "(" + string.Join($" {LogicalOperator} ", _conditions.Select(c => c.ToQueryString( NeoVar ))) + ")";
     }
-    public Boolean isEmpty(){
+    public bool isEmpty(){
         return _conditions.Count == 0;
     }
 }
