@@ -5,7 +5,7 @@ using System.Linq;
 public abstract class Traversal
 {
     //strart node treba definovat vzdy z nejakych matchnutych nodes
-    public NeoNode startNode{ get; set; }
+    public MatchObject startNode{ get; set; }
     
     public int maxLevel{ get; set; } = 10;
     public int minLevel{ get; set; } = 1;
@@ -42,7 +42,7 @@ public class ExpandConfigTraversal : Traversal
 {
     public string RelationshipFilter{get; set; }
     public int Limit { get; set; } = 1;
-    public  List<NeoNode> TerminatorNodesParam { get; set; } = new List<NeoNode>();
+    public  List<MatchObject> TerminatorNodesParam { get; set; } = new List<MatchObject>();
     
   
     protected override string GetFunctionName() => "expandConfig";
@@ -59,7 +59,7 @@ public class ExpandConfigTraversal : Traversal
         }
         return config;
     }
-    public void AddTerminatorNode( NeoNode node ){
+    public void AddTerminatorNode( MatchObject node ){
         TerminatorNodesParam.Add( node );
     }
     public void RemoveTerminatorNode( string neoVar ){
