@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class ReadingJson
 {
-    private const double Tolerance = 0.01;
+    private const double Tolerance = 0.1;
     public static Dictionary<string,NodeObject> ReadJson(string jsonContent)
     {        
         Dictionary<string, NodeObject> nodesDictionary = new Dictionary<string, NodeObject>();

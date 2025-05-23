@@ -27,8 +27,8 @@ public class DrawGraph : MonoBehaviour, ISingleton
     private Queue<GameObject> linePool;
     private Queue<GameObject> spherePool;
     private static readonly CookieContainer CookieContainer = new CookieContainer();
-    private Stack<Command> undo;
-    private Stack<Command> redo;
+    private Stack<Command> undo = new Stack<Command>();
+    private Stack<Command> redo = new Stack<Command>();
     private string firstSelectedKey = null;
     private string secondSelectedKey = null;
     public bool isAddEdgeMode = false;
@@ -114,7 +114,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
     private IEnumerator ProcessGraphData()
     {
         yield return StartCoroutine(GetGraphData());
-
+		ResetGraph();
         Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
         foreach (var node in ReadingJson.ReadJson(_responseData1))
         {
@@ -152,14 +152,8 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private void VisualizeGraph(Dictionary<string, NodeObject> forAdd)
     {
-        if (undo == null)
-        {
-            undo = new Stack<Command>();
-            redo = new Stack<Command>();
-        }
-        Queue<GameObject> spherePool = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY];
+		Queue<GameObject> spherePool = ObjectPool.SharedInstance.poolDictionary[SPHERE_POOL_KEY];
         Queue<GameObject> linePool = ObjectPool.SharedInstance.poolDictionary[LINE_POOL_KEY];
-
         foreach (KeyValuePair<string, NodeObject> node in forAdd)
         {
             GameObject sphere = spherePool.Dequeue();
@@ -196,15 +190,14 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     LineRenderer lr = edge.GetComponent<LineRenderer>();
                     lr.positionCount = 0;
                     lr.positionCount = 2;
-                    NodeObject nodeObj = _nodesDictionary[node.Key];
-                    if (!nodeObj.UIedges.ContainsKey(targetNode))
+                    if (!_nodesDictionary[node.Key].UIedges.ContainsKey(targetNode))
                     {
                         
-                        nodeObj.UIedges.Add(targetNode, edge);
+                        _nodesDictionary[node.Key].UIedges.Add(targetNode, edge);
                         activeEdges.Add(edge);
                     }
-                    if(!nodeObj.neighbours.Contains(targetNode)){
-                        nodeObj.neighbours.Add(targetNode);
+                    if(!_nodesDictionary[node.Key].neighbours.Contains(targetNode)){
+                        _nodesDictionary[node.Key].neighbours.Add(targetNode);
                     }
                   
                     
@@ -317,11 +310,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
             sphere.transform.SetParent(graphPrefab.transform);
             VertexSelector vertexSelector = sphere.AddComponent<VertexSelector>();
             vertexSelector.drawGraph = this;
-            _nodesDictionary.Add(_counter.ToString(), new NodeObject(_counter.ToString(),0,0,0));
+			NodeObject node = new NodeObject(_counter.ToString(),0,0,0);
+            _nodesDictionary.Add(_counter.ToString(), node);
             _nodesDictionary[_counter.ToString()].UInode = sphere;            
             activeNodes.Add(sphere);
             redo.Clear();
-            undo.Push(new Command(sphere, "addNode","","",_counter.ToString()));
+            undo.Push(new Command(sphere, "addNode",null,null,_counter.ToString(),"","",node));
+			Debug.LogWarning(node.UIedges.Count.ToString());
             _counter++;
         }
         else
@@ -388,19 +383,19 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private void DisableEdge(string fromNode, string toNode)
     {
-        if(_nodesDictionary.ContainsKey(fromNode) && _nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
+		if(_nodesDictionary.ContainsKey(fromNode) && _nodesDictionary[fromNode].UIedges.ContainsKey(toNode))
         {
             Debug.Log("Edge between" + fromNode + " " + toNode +"succesfully disabled");
             GameObject edge = _nodesDictionary[fromNode].UIedges[toNode];            
             SetVisibilityEdge(edge,false);
-            undo.Push(new Command(edge,"deleteRelationship",fromNode,toNode));
+            undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode]));
             redo.Clear();
         } else if (_nodesDictionary.ContainsKey(toNode) && _nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
         {
             Debug.Log("Edge between" + fromNode + " " + toNode + "succesfully disabled");
             GameObject edge = _nodesDictionary[toNode].UIedges[fromNode];
             SetVisibilityEdge(edge, false);
-            undo.Push(new Command(edge, "deleteRelationship",toNode,fromNode));
+            undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[toNode],_nodesDictionary[fromNode]));
             redo.Clear();
         }
         //PrintPoolCounts();
@@ -458,7 +453,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     Debug.Log($"Edge created between {fromNode} and {toNode}");
 
                     redo.Clear();
-                    undo.Push(new Command(edge, "addRelationship",fromNode,toNode));
+                    undo.Push(new Command(edge, "addRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode],"",fromNode,toNode));
 
                     // Reset Line Renderer positions:
                     LineRenderer lrenderer = edge.GetComponent<LineRenderer>();
@@ -501,12 +496,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
             Command aktualCommand = undo.Pop();
             if (aktualCommand.command.Equals("addNode"))
             {
-                SetVisibilityNode(aktualCommand.gameObject, false);
+                nodeOperation(aktualCommand,false);
                 redo.Push(aktualCommand);
 
             } else if (aktualCommand.command.Equals("addRelationship"))
             {
-                SetVisibilityNode(aktualCommand.gameObject, false);
+				edgeOperation(aktualCommand,false); 
+                //SetVisibilityNode(aktualCommand.gameObject, false);
                 redo.Push(aktualCommand);
 
             } else if (aktualCommand.command.Equals("deleteNode"))
@@ -527,10 +523,63 @@ public class DrawGraph : MonoBehaviour, ISingleton
             } else if (aktualCommand.command.Equals("deleteRelationship"))
             {
                 redo.Push(aktualCommand);
-                SetVisibilityEdge(aktualCommand.gameObject,true);
+				edgeOperation(aktualCommand,true);     
+                //SetVisibilityEdge(aktualCommand.gameObject,true);
             }
         }
     }
+
+	public void nodeOperation(Command aktualCommand,bool operation)
+	{
+		if(_nodesDictionary.ContainsKey(aktualCommand.nodeName))
+		{
+			SetVisibilityNode(_nodesDictionary[aktualCommand.nodeName].UInode, operation);
+		}
+		else
+		{
+			foreach (KeyValuePair<string, NodeObject> vrchol in _nodesDictionary)
+            {
+				if(vrchol.Value.isEqualTo(aktualCommand.nodeObject))
+				{
+					SetVisibilityNode(vrchol.Value.UInode, operation);
+					Debug.LogWarning(vrchol.Value.UIedges.Count.ToString() + " " + aktualCommand.nodeObject.UIedges.Count.ToString());
+					break;
+				}
+			}
+		}
+	}
+
+	public void edgeOperation(Command aktualCommand,bool operation)
+	{
+		if(_nodesDictionary.ContainsKey(aktualCommand.fromNode) && _nodesDictionary[aktualCommand.fromNode].UIedges.ContainsKey(aktualCommand.toNode))
+		{
+			SetVisibilityEdge(_nodesDictionary[aktualCommand.fromNode].UIedges[aktualCommand.toNode], operation);
+		}
+		else
+		{
+			bool found = false;
+			foreach (KeyValuePair<string, NodeObject> vrchol1 in _nodesDictionary)
+            {
+				if(vrchol1.Value.isEqualTo(aktualCommand.firstNode))
+				{	
+					foreach (KeyValuePair<string, NodeObject> vrchol2 in _nodesDictionary)
+            		{
+						
+						if(vrchol2.Value.isEqualTo(aktualCommand.secondNode) && vrchol1.Value.UIedges.ContainsKey(vrchol2.Key))
+						{
+							found = true;
+							SetVisibilityEdge(vrchol1.Value.UIedges[vrchol2.Key], operation);
+							break;
+						}
+					}
+					if(found)
+					{
+						break;
+					}	
+				}
+			}
+		}
+	}
 
     public void Redo()
     {
@@ -538,16 +587,18 @@ public class DrawGraph : MonoBehaviour, ISingleton
         {
             Command aktualCommand = redo.Pop();
             if (aktualCommand.command.Equals("addNode"))
-            {
-                SetVisibilityNode(aktualCommand.gameObject, true);
+            {	
+				nodeOperation(aktualCommand,true);
                 undo.Push(aktualCommand);
             } else if (aktualCommand.command.Equals("addRelationship"))
             {
-                SetVisibilityEdge(aktualCommand.gameObject, true);
+				edgeOperation(aktualCommand,true);                
+				//SetVisibilityEdge(aktualCommand.gameObject, true);
                 undo.Push(aktualCommand);
             } else if (aktualCommand.command.Equals("deleteNode"))
             {
-                SetVisibilityNode(aktualCommand.gameObject, false);
+                nodeOperation(aktualCommand,false);
+				//SetVisibilityNode(aktualCommand.gameObject, false);
 
                 
                 //pri undo/ redo sa deletnuty node vrati naspat no ak sa medzi tym urobil relayout
@@ -562,13 +613,14 @@ public class DrawGraph : MonoBehaviour, ISingleton
                         }
                     }
                 }
-                _nodesDictionary.Remove(aktualCommand.nodeName);
+                //_nodesDictionary.Remove(aktualCommand.nodeName);
                 undo.Push(aktualCommand);
             }
             else if (aktualCommand.command.Equals("deleteRelationship"))
             {
-                undo.Push(aktualCommand);
-                SetVisibilityEdge(aktualCommand.gameObject, false);
+                edgeOperation(aktualCommand,false);
+				undo.Push(aktualCommand);
+                //SetVisibilityEdge(aktualCommand.gameObject, false);
             }
         }                
     }
@@ -585,7 +637,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
         //iterate over undo stack which contain new changes and them add to json 
         for (int i = commands.Count-1; i >= 0; i--)
         {            
-            Debug.Log(commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
+            //Debug.Log(commands[i].command + " " + commands[i].nodeName + " " + commands[i].fromNode + " " + commands[i].toNode + " " + commands[i].gameObject.transform.position.x + " " + commands[i].gameObject.transform.position.y);            
             //if change is addNode is enough to add him just to JSON no backround proceses are needed
             if (commands[i].command.Equals("addNode"))
             {
