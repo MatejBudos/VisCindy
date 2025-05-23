@@ -10,18 +10,17 @@ public class CypherQueryBuilder
     //private List<string> _matchClauses = new();
     private List<string> finalWhereCondition = new List<string>();
     private List<string> _returnClauses = new();
+    private QueryReturnStrategy _queryReturnStrategy;
 
     public CypherQueryBuilder SetNeoNode(MatchObject node)
     {
         MatchNodes.Add(node);
-        //_matchClauses.Add(node.ToCypherMatchProperties());
         return this;
     }
     public CypherQueryBuilder SetNeoNode(List<MatchObject> nodes)
     {
         foreach (var node in nodes){
             MatchNodes.Add(node);
-            //_matchClauses.Add(node.ToCypherMatchProperties());
         }
         return this;
     }
@@ -32,7 +31,6 @@ public class CypherQueryBuilder
         foreach( MatchObject node in MatchNodes ){
             if (node?.attributes != null && !node.attributes.isEmpty())
                 finalWhereCondition.Add(node.ToCypherConditions());
-            
         }
         return this;
        
@@ -44,11 +42,10 @@ public class CypherQueryBuilder
         return this;
     }
 
-
     //moznost na chainovanie treba pridat mozno strategy pattern
-    public CypherQueryBuilder AddReturn(string clause)
+    public CypherQueryBuilder SetReturnStrategy( QueryReturnStrategy strategy )
     {
-        _returnClauses.Add(clause);
+        this._queryReturnStrategy = strategy;
         return this;
     }
 
@@ -66,9 +63,9 @@ public class CypherQueryBuilder
 
         if (_traversal != null)
             queryParts.Add(_traversal.BuildQuery());
-
-        if (_returnClauses.Any())
-            queryParts.Add("RETURN " + string.Join(", ", _returnClauses));
+            
+        if ( _queryReturnStrategy != null )
+            queryParts.Add( _queryReturnStrategy.ChainingStrategy(MatchNodes, _traversal ).Get() );
 
         return string.Join("\n", queryParts);
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 public abstract class MatchObject
@@ -7,6 +8,14 @@ public abstract class MatchObject
     public ICondition attributes { get; set; }
     public string NeoVar { get; set; }
     public abstract string ToCypherMatchProperties();
+    public virtual void Add( MatchObject obj )
+    {
+        return;
+    }
+    public virtual string NeoVarToString()
+    {
+        return NeoVar;
+    }
     public virtual string ToCypherConditions()
     {
         return attributes != null ? attributes.ToQueryString(this.NeoVar) : "";
@@ -75,13 +84,13 @@ public class NeoEdge : MatchObject
     }
 }
 
-public class MatchSet : MatchObject
+public class MatchPattern : MatchObject
 {
     private List<MatchObject> elements = new();
 
-    public MatchSet() : base(null, null){}
+    public MatchPattern() : base(null, null) { }
 
-    public void Add(MatchObject obj)
+    public override void Add(MatchObject obj)
     {
         elements.Add(obj);
     }
@@ -100,5 +109,9 @@ public class MatchSet : MatchObject
             .Where(c => !string.IsNullOrWhiteSpace(c));
 
         return string.Join(" AND ", conditions);
+    }
+    public override string NeoVarToString()
+    {
+        return string.Join(", ", elements.Select(e => e.ToString()));
     }
 }

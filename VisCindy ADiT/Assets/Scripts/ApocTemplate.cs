@@ -29,9 +29,10 @@ public abstract class Traversal
 
        return
         "CALL apoc.path." + GetFunctionName() + "( " + startNode.NeoVar +  ", {" + configString + "})\n" +
-        "YIELD path\n";
+        "YIELD path";
 
     }
+    //hook methods
     protected abstract string GetFunctionName();
     protected abstract Dictionary<string, string> GetCustomConfig();
 

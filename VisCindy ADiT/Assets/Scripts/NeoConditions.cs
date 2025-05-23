@@ -23,11 +23,11 @@ public class SimpleCondition : ICondition
 
    public string ToQueryString(string NeoVar = "a")
     {
-        string formattedValue = Value is string 
-            ? $"\"{Value}\"" 
-            : Value.ToString();
-
-        return $"{NeoVar}.{Field} {Operator} {formattedValue}";
+        if (Value is string)
+            return $"{NeoVar}.{Field} {Operator} \"{Value}\"";
+       
+        //if (Value is NeoVar || Value is int)
+        return $"{NeoVar}.{Field} {Operator} {Value.ToString()}";
     }
     public bool isEmpty(){
         return false;
