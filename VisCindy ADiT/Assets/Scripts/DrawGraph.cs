@@ -34,6 +34,8 @@ public class DrawGraph : MonoBehaviour, ISingleton
     public bool isAddEdgeMode = false;
     public bool isRemoveEdgeMode = false;
     public bool isRemoveNodeMode = false;
+	private bool undoFlag = true;
+	private bool change = false;
     private HttpClientHandler _handler = new HttpClientHandler
     {
         CookieContainer = CookieContainer,
@@ -41,7 +43,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
     };
     public string apiUrl = "http://127.0.0.1:5000/api/";
     private Dictionary<string, NodeObject> _nodesDictionary = new Dictionary<string, NodeObject>();
-    
+
     [SerializeField] private TMP_Dropdown layoutDropdown;
     [SerializeField] private TMP_Dropdown getGraphDropdown;
 
@@ -210,6 +212,36 @@ public class DrawGraph : MonoBehaviour, ISingleton
             }
             _counterEdges += enumerator;
         }
+
+		if(change)
+		{
+			undoFlag = false;
+			Stack<Command> undoCopy = new Stack<Command>(undo);
+			List<Command> list = new List<Command>();
+			while(undoCopy.Count > 0)
+			{
+				list.Add(undoCopy.Pop());
+			}
+			foreach(Command aktualCommand in list)
+			{
+    	        if (aktualCommand.command.Equals("addRelationship"))
+   	        	{
+					CreateEdge(aktualCommand.fromNode,aktualCommand.toNode);     
+					//SetVisibilityEdge(aktualCommand.gameObject, true);
+            	} else if (aktualCommand.command.Equals("deleteNode"))
+            	{
+               		DisableNode(aktualCommand.nodeName); 
+                	//_nodesDictionary.Remove(aktualCommand.nodeName);
+            	}
+            	else if (aktualCommand.command.Equals("deleteRelationship"))
+            	{
+                	edgeOperation(aktualCommand,false);
+               	 	//SetVisibilityEdge(aktualCommand.gameObject, false);
+           		}
+			}
+			undoFlag = true;
+		}
+		
         //PrintPoolCounts();
     }
 
@@ -315,7 +347,11 @@ public class DrawGraph : MonoBehaviour, ISingleton
             _nodesDictionary[_counter.ToString()].UInode = sphere;            
             activeNodes.Add(sphere);
             redo.Clear();
-            undo.Push(new Command(sphere, "addNode",null,null,_counter.ToString(),"","",node));
+            if(undoFlag)
+			{
+				undo.Push(new Command(sphere, "addNode",null,null,_counter.ToString(),"","",node));
+				change = true;
+			}
 			Debug.LogWarning(node.UIedges.Count.ToString());
             _counter++;
         }
@@ -388,15 +424,24 @@ public class DrawGraph : MonoBehaviour, ISingleton
             Debug.Log("Edge between" + fromNode + " " + toNode +"succesfully disabled");
             GameObject edge = _nodesDictionary[fromNode].UIedges[toNode];            
             SetVisibilityEdge(edge,false);
-            undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode]));
-            redo.Clear();
+            if(undoFlag)
+			{
+				undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode]));
+				change = true;
+			}
+			redo.Clear();
         } else if (_nodesDictionary.ContainsKey(toNode) && _nodesDictionary[toNode].UIedges.ContainsKey(fromNode))
         {
             Debug.Log("Edge between" + fromNode + " " + toNode + "succesfully disabled");
             GameObject edge = _nodesDictionary[toNode].UIedges[fromNode];
             SetVisibilityEdge(edge, false);
             undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[toNode],_nodesDictionary[fromNode]));
-            redo.Clear();
+            if(undoFlag)
+			{
+				undo.Push(new Command(edge,"deleteRelationship",_nodesDictionary[toNode],_nodesDictionary[fromNode]));
+            	change = true;
+			}
+			redo.Clear();
         }
         //PrintPoolCounts();
     }
@@ -420,8 +465,12 @@ public class DrawGraph : MonoBehaviour, ISingleton
             // do commandu pridat cely nodeobject nie len uinode?
             Command command = new Command(node.UInode, "deleteNode", nodeName: nodeKey, node : node);
             _nodesDictionary.Remove(nodeKey);
-            undo.Push(command);
-            redo.Clear();
+			if(undoFlag)
+			{	
+				undo.Push(command);
+				change = true;
+			}            
+			redo.Clear();
         }
         //PrintPoolCounts();
         
@@ -453,9 +502,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
                     Debug.Log($"Edge created between {fromNode} and {toNode}");
 
                     redo.Clear();
-                    undo.Push(new Command(edge, "addRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode],"",fromNode,toNode));
-
-                    // Reset Line Renderer positions:
+                   
+					if(undoFlag)
+					{
+					 	undo.Push(new Command(edge, "addRelationship",_nodesDictionary[fromNode],_nodesDictionary[toNode],"",fromNode,toNode));
+						change = true;
+					}
+					// Reset Line Renderer positions:
                     LineRenderer lrenderer = edge.GetComponent<LineRenderer>();
                     lrenderer.positionCount = 0;
                     lrenderer.positionCount = 2;
