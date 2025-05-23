@@ -829,13 +829,13 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 // Serialize JObject na JSON string
                 string json = sendToDB.ToString();
 
-                // Log JSON pred odoslan�m
+                // Log JSON pred odoslanim
                 Debug.Log("Preparing to send JSON: " + json);
 
                 // Pripravte obsah pre POST request
                 StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                // Odo�lite POST request
+                // Odoslite POST request
                 HttpResponseMessage response = await client.PostAsync(url, content);
 
                 // Spracovanie odpovede
@@ -846,7 +846,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
                 }
                 else
                 {
-                    // Ak server vr�ti chybu, logujte jej detaily
+                    // Ak server vrati chybu, logujte jej detaily
                     string errorResponse = await response.Content.ReadAsStringAsync();
                     Debug.LogError($"Error: {response.StatusCode} - {response.ReasonPhrase}");
                     Debug.LogError($"Response content: {errorResponse}");
@@ -859,12 +859,12 @@ public class DrawGraph : MonoBehaviour, ISingleton
             }
             catch (JsonSerializationException jsonEx)
             {
-                // Log chyby pri serializ�cii JSON-u
+                // Log chyby pri serializacii JSON-u
                 Debug.LogError("JSON Serialization Exception: " + jsonEx.Message);
             }
             catch (Exception e)
             {
-                // Log v�eobecn� v�nimky
+                // Log vseobecne vynimky
                 Debug.LogError("Exception: " + e.Message);
             }
         }
