@@ -18,25 +18,29 @@ public class ReturnObject
     {
         return returnStrat;
     }
+    public void setCondiction(ICondition condition)
+    {
+        this.chainCondition = condition;
+    }
 }
 
 
-public abstract class QueryReturnStrategy
+public interface QueryReturnStrategy
 {
 
-    public abstract ReturnObject ReturnStrategy(List<MatchObject> nodes, Traversal traversal);
-    public abstract ReturnObject ChainingStrategy(List<MatchObject> nodes, Traversal traversal);
+    public ReturnObject ReturnStrategy(List<MatchObject> nodes);
+    public ReturnObject ChainingStrategy(List<MatchObject> nodes);
 }
 
 public class TraversalReturnStrategy : QueryReturnStrategy
 {
-    public override ReturnObject ReturnStrategy(List<MatchObject> nodes, Traversal traversal)
+    public ReturnObject ReturnStrategy(List<MatchObject> nodes)
     {
         string result = "RETURN path, [n IN nodes(path) | elementID(n) ] AS NeoIds";
         ReturnObject returnObject= new ReturnObject( result);
         return returnObject;
     }
-    public override ReturnObject ChainingStrategy(List<MatchObject> nodes, Traversal traversal)
+    public ReturnObject ChainingStrategy(List<MatchObject> nodes)
     {
         string result = "WITH  [n IN nodes(path) ] as nodes";
         ReturnObject returnObject= new ReturnObject( result, new SimpleCondition("", "in", new NeoVar("nodes")));
@@ -46,17 +50,32 @@ public class TraversalReturnStrategy : QueryReturnStrategy
 
 public class NodeReturnStrategy : QueryReturnStrategy
 {
-    public override ReturnObject ReturnStrategy(List<MatchObject> nodes, Traversal traversal)
+    public ReturnObject ReturnStrategy(List<MatchObject> nodes)
     {
         
         string result = "RETURN " + string.Join( ", ", nodes.Select( n => n.NeoVarToString() ) );
         
         return new ReturnObject( result );
     }
-    public override ReturnObject ChainingStrategy(List<MatchObject> nodes, Traversal traversal)
+    public ReturnObject ChainingStrategy(List<MatchObject> nodes)
     {
         string result = "WITH " + string.Join( " + ", nodes.Select( n => "collect(" + n.NeoVarToString() + ")" ) ) + "AS nodes";
-        ReturnObject returnObject = new ReturnObject(result, new SimpleCondition("", "in", new NeoVar("nodes")));
+
+        ReturnObject returnObject= new ReturnObject( result, new SimpleCondition("", "in", new NeoVar("nodes")));
+        
+        /*
+        ReturnObject returnObject = new ReturnObject(result);
+        CompositeCondition condition = new CompositeCondition("AND");
+        foreach (MatchObject obj in nodes)
+        {
+            //asi pridat aj match pattern
+            if (obj is NeoNode)
+            {
+                condition.Add( new SimpleCondition( obj.NeoVarToString(), "in", new NeoVar("nodes")));
+            }
+        }
+        returnObject.setCondiction(condition);
+        */
         return returnObject;
 
     }

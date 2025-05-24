@@ -10,7 +10,7 @@ public class CypherQueryBuilder
     //private List<string> _matchClauses = new();
     private List<string> finalWhereCondition = new List<string>();
     private List<string> _returnClauses = new();
-    private QueryReturnStrategy _queryReturnStrategy;
+    private QueryReturnStrategy _queryReturnStrategy = new NodeReturnStrategy();
 
     public CypherQueryBuilder SetNeoNode(MatchObject node)
     {
@@ -39,10 +39,11 @@ public class CypherQueryBuilder
     public CypherQueryBuilder SetTraversal(Traversal traversal)
     {
         _traversal = traversal;
+        SetReturnStrategy(new TraversalReturnStrategy());
         return this;
     }
 
-    //moznost na chainovanie treba pridat mozno strategy pattern
+
     public CypherQueryBuilder SetReturnStrategy( QueryReturnStrategy strategy )
     {
         this._queryReturnStrategy = strategy;
@@ -64,8 +65,9 @@ public class CypherQueryBuilder
         if (_traversal != null)
             queryParts.Add(_traversal.BuildQuery());
             
-        if ( _queryReturnStrategy != null )
-            queryParts.Add( _queryReturnStrategy.ChainingStrategy(MatchNodes, _traversal ).Get() );
+        
+        if (_queryReturnStrategy != null)
+            queryParts.Add(_queryReturnStrategy.ReturnStrategy(MatchNodes).Get());
 
         return string.Join("\n", queryParts);
     }
