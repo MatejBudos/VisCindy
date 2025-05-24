@@ -6,7 +6,6 @@ public abstract class Traversal
 {
     //strart node treba definovat vzdy z nejakych matchnutych nodes
     public MatchObject startNode{ get; set; }
-    
     public int maxLevel{ get; set; } = 10;
     public int minLevel{ get; set; } = 1;
     public string uniqueness{ get; set; } = "NODE_GLOBAL";

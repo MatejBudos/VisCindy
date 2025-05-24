@@ -112,7 +112,8 @@ public class MatchPattern : MatchObject
     }
     public override string NeoVarToString()
     {
-        return string.Join(", ", elements.Select(e => e is NeoNode ? e.ToString() : string.Empty ));
+        var el = elements.Select(e => e is NeoNode ? e.NeoVarToString() : null).Where(c => !string.IsNullOrWhiteSpace(c));
+        return string.Join(", ", el);
     }
 
 }
