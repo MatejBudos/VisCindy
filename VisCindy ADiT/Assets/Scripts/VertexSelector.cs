@@ -8,8 +8,8 @@ public class VertexSelector : MonoBehaviour, IMixedRealityPointerHandler
     {
         if (drawGraph != null && (drawGraph.isAddEdgeMode || drawGraph.isRemoveEdgeMode || drawGraph.isRemoveNodeMode))
         {
-            // Zavolá funkciu na výber vrcholu
-            drawGraph.OnVertexSelected(gameObject.name); // Predpokladáme, že meno GameObjectu je k¾úè v _nodesDictionary
+            // Zavola funkciu na vyber vrcholu
+            drawGraph.OnVertexSelected(gameObject.name); // Predpokladame, ze meno GameObjectu je kluc v _nodesDictionary
         }
     }
 

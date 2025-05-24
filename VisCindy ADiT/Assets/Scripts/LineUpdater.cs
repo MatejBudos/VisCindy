@@ -53,22 +53,16 @@ public class LineUpdater : MonoBehaviour
         Vector3 closestEdge = top;
         float minDistance = Vector3.Distance(top, targetPosition);
 
-        if (Vector3.Distance(bottom, targetPosition) < minDistance)
-        {
-            closestEdge = bottom;
-            minDistance = Vector3.Distance(bottom, targetPosition);
-        }
-        if (Vector3.Distance(left, targetPosition) < minDistance)
-        {
-            closestEdge = left;
-            minDistance = Vector3.Distance(left, targetPosition);
-        }
-        if (Vector3.Distance(right, targetPosition) < minDistance)
-        {
-            closestEdge = right;
-            minDistance = Vector3.Distance(right, targetPosition);
-        }
+        Vector3[] vectors = new[] { bottom, left, right };
 
+        foreach (var vector in vectors)
+        {
+            if (Vector3.Distance(vector, targetPosition) < minDistance)
+            {
+                closestEdge = vector;
+                minDistance = Vector3.Distance(vector, targetPosition);
+            }
+        }
         return closestEdge;
     }
 }
