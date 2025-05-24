@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Dynamic;
-using System.IO.Pipelines;
+using System.Linq;
+
 //toto funguje ten return ale ten strat pattern tu nie je ok, a conditions sa nespracovavaju do buducej query
 public class ReturnObject
 {
@@ -30,6 +32,7 @@ public interface QueryReturnStrategy
 
     public ReturnObject ReturnStrategy(List<MatchObject> nodes);
     public ReturnObject ChainingStrategy(List<MatchObject> nodes);
+    
 }
 
 public class TraversalReturnStrategy : QueryReturnStrategy
