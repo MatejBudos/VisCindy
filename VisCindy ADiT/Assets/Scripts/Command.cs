@@ -9,12 +9,16 @@ public class Command
     public string nodeName;
     public string fromNode;
     public string toNode;
+    public NodeObject firstNode;
+    public NodeObject secondNode;
     public NodeObject nodeObject;
-    public Command(GameObject gameObject, string command, string fromNode = "", string toNode = "", string nodeName="", NodeObject node = null)
+    public Command(GameObject gameObject, string command,NodeObject firstNode = null,NodeObject secondNode = null,string nodeName="", string fromNode = "", string toNode = "" , NodeObject node = null)
     {
         this.nodeObject = node;
         this.gameObject = gameObject;
         this.command = command;
+        this.firstNode = firstNode;
+        this.secondNode = secondNode;
         this.fromNode = fromNode;
         this.toNode = toNode;
         this.nodeName = nodeName;

@@ -233,7 +233,7 @@ public class CypherQueryHandler : MonoBehaviour
         _rowCounter++;
     }
 
-    public void OnButtonClickedAND(int buttonID) //and
+    public void OnButtonClicked(int buttonID,string operation)
     {
         int index = _queryPriority.IndexOf("p" + buttonID, StringComparison.Ordinal);
 
@@ -242,11 +242,11 @@ public class CypherQueryHandler : MonoBehaviour
             _queryPriority = _queryPriority.Insert(index, "(");
             if ((_rowCounter-1)  == buttonID)
             {
-                _queryPriority = _queryPriority.Insert(index + 3, " && p" + _rowCounter);
+                _queryPriority = _queryPriority.Insert(index + 3, " " + operation + " p" + _rowCounter);
             }
             else
             {
-                _queryPriority = _queryPriority.Insert(index + 4, "&& p" + _rowCounter + ") ");
+                _queryPriority = _queryPriority.Insert(index + 4,operation + " p" + _rowCounter + ") ");
             }
         }
 
@@ -256,51 +256,21 @@ public class CypherQueryHandler : MonoBehaviour
         {
             _queryPriority += ')';
         }
+    }
+
+    public void OnButtonClickedAND(int buttonID) //and
+    {
+        OnButtonClicked(buttonID, "&&");
     }
     
     public void OnButtonClickedOR(int buttonID) //and
     {
-        int index = _queryPriority.IndexOf("p" + buttonID, StringComparison.Ordinal);
-
-        if (index != -1)
-        {
-            _queryPriority = _queryPriority.Insert(index, "(");
-            //zasa mi jebe a robim to iste
-            if ((_rowCounter - 1) == buttonID)
-            {
-                _queryPriority = _queryPriority.Insert(index + 3, " || p" + _rowCounter);
-            }
-            else
-            {
-                _queryPriority = _queryPriority.Insert(index + 4, "|| p" + _rowCounter + ") ");
-            }
-        }
-
-        _queryPriority += ' ';
-        // Debug.Log(_queryPriority + "rwc: " + _rowCounter + "btID: " + buttonID);
-        for (int i = 0; i < ParenthesesDifference(_queryPriority); i++)
-        {
-            _queryPriority += ')';
-        }
+        OnButtonClicked(buttonID, "||");
     }
     
     int ParenthesesDifference(string inputString)
     {
-        int count1 = 0;
-        int count2 = 0;
-        foreach (char c in inputString)
-        {
-            if (c == '(')
-            {
-                count1++;
-            }
-
-            if (c == ')')
-            {
-                count2++;
-            }
-        }
-        return count1-count2;
+        return inputString.Count(f => f == '(') - inputString.Count(f => f == ')');
     }
 
     public void DeleteQuery()
