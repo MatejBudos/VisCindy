@@ -21,12 +21,6 @@ public class VertexClickHandler : MonoBehaviour
     public void OnPointerClick()
     {
         if (sieraHandler != null)
-        {
-            sieraHandler.SelectVertex(this.gameObject);
-        }
-        else
-        {
-            Debug.LogError("SieraHandler not assigned or found for Vertex: " + gameObject.name);
-        }
+            sieraHandler.SelectVertex(gameObject);
     }
 }

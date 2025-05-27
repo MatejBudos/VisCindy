@@ -1380,7 +1380,7 @@ MonoBehaviour:
   handType: 0
   proximityType: 0
   executionOrder: 0
-  constraintOnRotation: -1
+  constraintOnRotation: 3
   useLocalSpaceForConstraint: 0
 --- !u!114 &1703139742289351341
 MonoBehaviour:
@@ -1579,6 +1579,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc4eef4992956b743886580e2971d0e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  vertexLabelTextComponent: {fileID: 7145940613283805427}
 --- !u!1 &7870882971783606293
 GameObject:
   m_ObjectHideFlags: 0

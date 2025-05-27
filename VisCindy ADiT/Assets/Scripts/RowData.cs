@@ -1,4 +1,6 @@
 using UnityEngine;
+
+[System.Serializable] 
 public class RowData
 {
     public string RowObjectName; // Name of the Row's GameObject for identification/debugging
