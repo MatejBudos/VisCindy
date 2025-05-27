@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
+
 public interface ICondition
 {
     string ToQueryString( string nodeVar );
@@ -10,7 +12,7 @@ public interface ICondition
 public class ConditionBuilder
 {
     private readonly CompositeCondition _root;
-    private readonly Dictionary<string, CompositeCondition> _tagMap = new();
+    private readonly Dictionary<string, ICondition> _tagMap = new();
 
     public ConditionBuilder(string rootLogicalOperator)
     {
@@ -18,33 +20,47 @@ public class ConditionBuilder
         _tagMap["root"] = _root;
     }
 
-    public void AddChild(string tagName, string logicalOperator)
+    public void CreateSimple(string tag, string field, string op, object value)
     {
-        var composite = new CompositeCondition(logicalOperator);
-        _tagMap[tagName] = composite;
+        _tagMap[tag] = new SimpleCondition(field, op, value);
     }
 
-    public void AddToParent(string parentTag, ICondition child)
+    public void CreateComposite(string tag, string logicalOperator)
+    {
+        _tagMap[tag] = new CompositeCondition(logicalOperator);
+    }
+
+    public void AddToParent(string parentTag, string childTag)
     {
         if (!_tagMap.ContainsKey(parentTag))
             throw new ArgumentException($"Parent tag '{parentTag}' not found.");
+        if (!_tagMap.ContainsKey(childTag))
+            throw new ArgumentException($"Child tag '{childTag}' not found.");
 
-        _tagMap[parentTag].Add(child);
+        if (_tagMap[parentTag] is CompositeCondition parent)
+        {
+            parent.Add(_tagMap[childTag]);
+        }
+        else
+        {
+            throw new InvalidOperationException($"Parent '{parentTag}' is not a composite condition.");
+        }
     }
 
-    public CompositeCondition GetComposite(string tagName)
+    
+    public void AddToRoot(string childTag)
     {
-        if (!_tagMap.ContainsKey(tagName))
-            throw new ArgumentException($"Tag '{tagName}' not found.");
-
-        return _tagMap[tagName];
+        AddToParent("root", childTag);
     }
 
-    public ICondition Build()
+    public String Build(string label)
     {
-        return _root;
+        return _root.ToQueryString(label);
     }
 }
+
+
+
 
 
 public class SimpleCondition : ICondition
@@ -60,7 +76,7 @@ public class SimpleCondition : ICondition
         Value = value;
     }
 
-    public string ToQueryString(string NeoVar = "a")
+    public string ToQueryString(string NeoVar)
     {
         if (Value is string)
             return $"{NeoVar}.{Field} {Operator} \"{Value}\"";
@@ -79,7 +95,7 @@ public class CompositeCondition : ICondition
     public string LogicalOperator { get; } // "AND" or "OR"
     private readonly List<ICondition> _conditions = new();
 
-    public CompositeCondition(string logicalOperator)
+    public CompositeCondition(string logicalOperator )
     {
         LogicalOperator = logicalOperator.ToUpper();
     }
@@ -89,7 +105,7 @@ public class CompositeCondition : ICondition
         _conditions.Add(condition);
     }
 
-    public string ToQueryString( string NeoVar = "a" )
+    public string ToQueryString( string NeoVar)
     {
         return "(" + string.Join($" {LogicalOperator} ", _conditions.Select(c => c.ToQueryString( NeoVar ))) + ")";
     }
@@ -103,43 +119,41 @@ class Program
 {
     static void Main()
     {
-        // var builder = new ConditionBuilder("OR"); // root composite
+        var builder = new ConditionBuilder("OR");
 
-        // // Create nested composites
-        // builder.AddChild("and1", "AND");
-        // builder.AddChild("or1", "OR");
+        // Create all nodes
+        builder.CreateSimple("ageCond", "age", ">", 30);
+        builder.CreateSimple("name1", "name", "=", "Jane");
+        builder.CreateSimple("name2", "name", "=", "John");
+        builder.CreateSimple("activeCond", "active", "=", true);
 
-        // // Add leaves to or1: (name = Jane OR name = John)
-        // builder.AddToParent("or1", new SimpleCondition("name", "=", "Jane"));
-        // builder.AddToParent("or1", new SimpleCondition("name", "=", "John"));
+        builder.CreateComposite("or1", "OR");
+        builder.CreateComposite("and1", "AND");
 
-        // // Add age condition to and1
-        // builder.AddToParent("and1", new SimpleCondition("age", ">", 30));
+        // Build nested structure
+        builder.AddToParent("or1", "name1");
+        builder.AddToParent("or1", "name2");
 
-        // // Add or1 (name conditions) to and1
-        // builder.AddToParent("and1", builder.GetComposite("or1"));
+        builder.AddToParent("and1", "ageCond");
+        builder.AddToParent("and1", "or1");
 
-        // // Add and1 to root
-        // builder.AddToParent("root", builder.GetComposite("and1"));
+        // Attach to root
+        builder.AddToRoot("and1");
+        builder.AddToRoot("activeCond");
 
-        // // Add active condition to root
-        // builder.AddToParent("root", new SimpleCondition("a.active", "=", true));
+        // Print final condition
+        var final = builder.Build("a");
+        Console.WriteLine(final);
 
-        // // Now build the full condition tree and print it
-        // var rootCondition = builder.Build();
-        // Console.WriteLine(rootCondition.ToQueryString("a"));
+        //------------------------------------------
 
-        var builder = new ConditionBuilder("OR"); // root tag (not used here, but required)
+        var builder1 = new ConditionBuilder("OR");
 
-        var simple1 = new SimpleCondition("age", "<", 18);
-        // var simple2 = new SimpleCondition("age", ">", 70);
+        builder1.CreateSimple("age", "age", ">", "30");
 
-        
-        builder.AddToParent("root", simple1);
-        // builder.AddToParent("root", simple2);
+        builder1.AddToRoot("age");
 
-        var rootCondition = builder.Build();
-        Console.WriteLine(rootCondition.ToQueryString("a"));
+        Console.WriteLine(builder1.Build("peter"));
 
     }
 }
