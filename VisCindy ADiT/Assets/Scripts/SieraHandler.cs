@@ -1,5 +1,10 @@
 using UnityEngine;
-using System.Collections.Generic; // Required for List
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using TMPro;
+using System; // Required for List
 
 public class SieraHandler : MonoBehaviour
 {
@@ -19,7 +24,7 @@ public class SieraHandler : MonoBehaviour
     private bool isInEdgeMode = false;
     private GameObject firstSelectedVertexForEdge = null;
     private List<Edge> activeEdges = new List<Edge>(); // List to track active edges
-    
+
     [Header("Edge UI Configuration")]
     [Tooltip("Prefab for the UI element (button/submenu) to show above edges.")]
     public GameObject edgeUIPrefab; // Assign your inactive UI prefab here
@@ -43,7 +48,7 @@ public class SieraHandler : MonoBehaviour
 
     void Start()
     {
-        
+
     }
 
     void Update()
@@ -150,7 +155,7 @@ public class SieraHandler : MonoBehaviour
             Debug.Log("Creating edge between " + startNode.name + " and " + endNode.name + (newEdge.uiElementInstance != null ? " with UI." : " without UI (check prefab)."));
         }
     }
-    
+
     // Public helper method to draw/update self-loop graphics
     public void DrawSelfLoopGraphic(LineRenderer lr, GameObject node, float zDepth)
     {
@@ -169,7 +174,7 @@ public class SieraHandler : MonoBehaviour
         {
             float angle = ((float)i / segments) * Mathf.PI * 2.0f;
             Vector3 pointOnCircleInPlane = new Vector3(Mathf.Sin(angle) * selfLoopVisualRadius, Mathf.Cos(angle) * selfLoopVisualRadius, 0);
-            
+
             // The selfLoopCenter is already in world space. Add the planar circle points to it.
             Vector3 worldPoint = selfLoopCenter + pointOnCircleInPlane;
             lr.SetPosition(i, new Vector3(worldPoint.x, worldPoint.y, zDepth));
@@ -190,7 +195,7 @@ public class SieraHandler : MonoBehaviour
         }
         return 0.5f;
     }
-    
+
     /// <summary>
     /// Collects all data from the current graph (vertices and edges) into a serializable format.
     /// </summary>
@@ -252,7 +257,7 @@ public class SieraHandler : MonoBehaviour
             }
             else
             {
-                 Debug.LogWarning($"Edge '{edge.lineRenderer?.gameObject.name}' has a null startNode or endNode.", edge.lineRenderer);
+                Debug.LogWarning($"Edge '{edge.lineRenderer?.gameObject.name}' has a null startNode or endNode.", edge.lineRenderer);
             }
         }
         return graphData;
@@ -285,4 +290,74 @@ public class SieraHandler : MonoBehaviour
 
         // For now, we've logged it. Implement actual saving/sending as needed.
     }
+
+
+    public void SaveButtonClick()
+    {
+        GraphExportData graphData = Instance.GetGraphDataForExport();
+        string jsonPayload = JsonUtility.ToJson(graphData, true); // 'true' for pretty printing (easier to read)
+
+        Debug.Log("--- SERIALIZED GRAPH DATA (JSON) ---");
+        Debug.Log(jsonPayload);
+        Debug.Log("------------------------------------");
+
+        //prvy krok do buildera
+        var tmpVertices = GraphVerticesToMatchObjects(graphData);
+        List<MatchObject> matchObjects = ConnectMatchObjects(graphData, tmpVertices);
+
+
+        CypherQueryBuilder cypherQueryBuilder = new NodeQueryBuilder();
+        Debug.Log(cypherQueryBuilder.SetNeoNode(matchObjects).AddWhereCondition().Build());
+
+    }
+
+    private Dictionary<string, MatchObject> GraphVerticesToMatchObjects(GraphExportData graphData)
+    {
+        // spravit text pole pre graph id a dat do graphData
+        string graphId = "1";
+        Dictionary<string, MatchObject> tmpVertices = new Dictionary<string, MatchObject>();
+        foreach (VertexExportData vertex in graphData.vertices)
+        {
+            MatchObject v = new NeoNode(vertex.id, graphId);
+            //iconditions
+            ICondition conditions = DataRowsToICondition(vertex.rowsData);
+            v.attributes = conditions;
+
+            tmpVertices[vertex.id] = v;
+        }
+        return tmpVertices;
+    }
+
+
+    private ICondition DataRowsToICondition(object exportedConditions)
+    {
+        return null;
+    }
+
+    private List<MatchObject> ConnectMatchObjects(GraphExportData graphData, Dictionary<string, MatchObject> Vertices)
+    {
+        List<MatchObject> matchObjects = new List<MatchObject>();
+        HashSet<string> connectedNodes = new HashSet<string>();
+        foreach (EdgeExportData edge in graphData.edges)
+        {
+            //este attr etc pridat
+            MatchObject e = new NeoEdge(edge.edgeName);
+
+            MatchObject fromNode = Vertices[edge.fromVertexId];
+            MatchObject toNode = Vertices[edge.toVertexId];
+            MatchObject pattern = new MatchPattern(fromNode, e, toNode);
+            connectedNodes.Add(edge.fromVertexId);
+            connectedNodes.Add(edge.toVertexId);
+            matchObjects.Add(pattern);
+        }
+
+        foreach (var vertex in Vertices)
+        {
+            if (connectedNodes.Contains(vertex.Key))
+            { continue; }
+            matchObjects.Add(vertex.Value);
+        }
+        return matchObjects;
+    }
+    
 }

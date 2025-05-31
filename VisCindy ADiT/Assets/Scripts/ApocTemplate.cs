@@ -9,6 +9,7 @@ public abstract class Traversal
     public int maxLevel{ get; set; } = 10;
     public int minLevel{ get; set; } = 1;
     public string uniqueness{ get; set; } = "NODE_GLOBAL";
+    public string RelationshipFilter{get; set; }
 
     public virtual string BuildQuery()
     {
@@ -18,6 +19,11 @@ public abstract class Traversal
             { "maxLevel", maxLevel.ToString() },
             { "uniqueness", $"\"{uniqueness}\"" }
         };
+        
+        if (RelationshipFilter != null)
+        {
+            config["relationshipFilter"] = RelationshipFilter;
+        }
 
         foreach (var kvp in GetCustomConfig())
         {
@@ -26,9 +32,9 @@ public abstract class Traversal
 
         string configString = string.Join(", ", config.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
 
-       return
-        "CALL apoc.path." + GetFunctionName() + "( " + startNode.NeoVar +  ", {" + configString + "})\n" +
-        "YIELD path";
+        return
+         "CALL apoc.path." + GetFunctionName() + "( " + startNode.NeoVar + ", {" + configString + "})\n" +
+         "YIELD path";
 
     }
     //hook methods
@@ -40,7 +46,7 @@ public abstract class Traversal
 
 public class ExpandConfigTraversal : Traversal
 {
-    public string RelationshipFilter{get; set; }
+    
     public int Limit { get; set; } = 1;
     public  List<MatchObject> TerminatorNodesParam { get; set; } = new List<MatchObject>();
     
@@ -54,9 +60,7 @@ public class ExpandConfigTraversal : Traversal
             { "limit", Limit.ToString() },
             { "terminatorNodes", '[' + string.Join(", ", TerminatorNodesParam.Select(n => n.NeoVar )) + ']' },
         };
-        if ( RelationshipFilter != null ){
-            config["relationshipFilter"] = RelationshipFilter;
-        }
+       
         return config;
     }
     public void AddTerminatorNode( MatchObject node ){

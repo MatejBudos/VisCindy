@@ -88,7 +88,12 @@ public class MatchPattern : MatchObject
 {
     private List<MatchObject> elements = new();
 
-    public MatchPattern() : base(null, null) { }
+    public MatchPattern(MatchObject n1, MatchObject e, MatchObject n2) : base(null, null)
+    {
+        elements.Add(n1);
+        elements.Add(e);
+        elements.Add(n2);
+    }
 
     public override void Add(MatchObject obj)
     {
