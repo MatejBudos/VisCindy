@@ -1,0 +1,123 @@
+{
+    "vertices": [
+        {
+            "id": "74938ef8-f381-4174-82be-fb5edb6005f3",
+            "vertexLabel": "​",
+            "rowsData": [
+                {
+                    "RowObjectName": "Row (1)",
+                    "OffsetX": 0.0,
+                    "MainDropdownValueText": "Option B",
+                    "MainDropdownValueIndex": 1,
+                    "Dropdown1ValueText": "Option B",
+                    "Dropdown1ValueIndex": 1,
+                    "Dropdown2ValueText": "Option C",
+                    "Dropdown2ValueIndex": 2
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 30.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 30.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 60.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 60.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 90.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 90.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                }
+            ]
+        },
+        {
+            "id": "e1953d45-74bc-4deb-826d-f930af29ae00",
+            "vertexLabel": "​",
+            "rowsData": [
+                {
+                    "RowObjectName": "Row (1)",
+                    "OffsetX": 0.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 30.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option A",
+                    "Dropdown2ValueIndex": 0
+                },
+                {
+                    "RowObjectName": "Row(Clone)",
+                    "OffsetX": 30.0,
+                    "MainDropdownValueText": "Option A",
+                    "MainDropdownValueIndex": 0,
+                    "Dropdown1ValueText": "Option A",
+                    "Dropdown1ValueIndex": 0,
+                    "Dropdown2ValueText": "Option B",
+                    "Dropdown2ValueIndex": 1
+                }
+            ]
+        }
+    ],
+    "edges": [
+        {
+            "fromVertexId": "74938ef8-f381-4174-82be-fb5edb6005f3",
+            "toVertexId": "e1953d45-74bc-4deb-826d-f930af29ae00",
+            "edgeName": "Edge_VertexThis(Clone)_to_VertexThis(Clone)"
+        }
+    ]
+}
