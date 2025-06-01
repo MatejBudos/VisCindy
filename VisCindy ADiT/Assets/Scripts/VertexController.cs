@@ -148,6 +148,73 @@ public class VertexController : MonoBehaviour
         }
     }
     
+    private string GetDisplayLabelFromDropdownMenu() // Renamed to be specific
+    {
+        if (vertexLabelTextComponent != null)
+        {
+            // Debug.Log($"[{gameObject.name}] GetDisplayLabelFromDropdownMenu returning: '{vertexLabelTextComponent.text}'");
+            return vertexLabelTextComponent.text;
+        }
+        else
+        {
+            // Fallback: Try to find it dynamically if not assigned.
+            // This assumes a specific hierarchy: this GameObject (DropdownMenu) -> Canvas -> Label
+            Transform canvasTransform = transform.Find("Canvas");
+            if (canvasTransform != null)
+            {
+                Transform labelTransform = canvasTransform.Find("Label");
+                if (labelTransform != null)
+                {
+                    TextMeshProUGUI tmpText = labelTransform.GetComponent<TextMeshProUGUI>();
+                    if (tmpText != null)
+                    {
+                        Debug.LogWarning($"VertexLabelTextComponent was not assigned on '{gameObject.name}'. Found 'Canvas/Label/Text (TMP)' dynamically. Please assign in Inspector for future reliability.", this);
+                        vertexLabelTextComponent = tmpText; // Cache it for next time
+                        return tmpText.text;
+                    }
+                    // Optional: Check for standard UI.Text if TMP not found
+                    UnityEngine.UI.Text uiText = labelTransform.GetComponent<UnityEngine.UI.Text>();
+                    if (uiText != null) {
+                        Debug.LogWarning($"VertexLabelTextComponent was not assigned and TMP_Text not found on 'Canvas/Label'. Found UI.Text dynamically. Please assign in Inspector and prefer TMP_Text.", this);
+                        return uiText.text;
+                    }
+                }
+            }
+            Debug.LogWarning($"VertexLabelTextComponent not assigned and 'Canvas/Label' with a Text component not found on '{gameObject.name}'. Display label from dropdown menu will be empty.", this);
+            return string.Empty; // Or a default name, or null
+        }
+    }
+    
+    /// <summary>
+    /// Derives the "vX" style ID from the root vertex GameObject's name.
+    /// Falls back to PersistentId (GUID) if parsing fails.
+    /// </summary>
+    public string GetDerivedExportIdAndLabel()
+    {
+        if (_vertexRootTransform != null)
+        {
+            string rootName = _vertexRootTransform.gameObject.name; // e.g., "Vertex_v0" or potentially just "v0"
+            if (rootName.StartsWith("Vertex_v") && rootName.Length > "Vertex_v".Length)
+            {
+                return rootName.Substring("Vertex_".Length); // Extracts "v0", "v1", etc.
+            }
+            else if (rootName.StartsWith("v") && rootName.Length > 1 && char.IsDigit(rootName[1]))
+            {
+                // Handles cases where the GameObject name might just be "v0", "v1", etc.
+                return rootName;
+            }
+            else
+            {
+                Debug.LogWarning($"Vertex root name '{rootName}' on '{gameObject.name}' (root: '{_vertexRootTransform.name}') does not follow 'Vertex_vX' or 'vX' pattern. Falling back to PersistentId for export ID.", _vertexRootTransform.gameObject);
+            }
+        }
+        else
+        {
+            Debug.LogError($"VertexController on '{gameObject.name}' has no _vertexRootTransform. Falling back to PersistentId for export ID.", this);
+        }
+        return this.PersistentId; // Fallback to the GUID
+    }
+    
     private RowController AddNewRowInternal(RowController sourceRow, string triggerType, float targetOffsetX)
     {
         if (rowPrefab == null) { Debug.LogError("Row Prefab not assigned in VertexController!", this); return null; }
@@ -241,6 +308,8 @@ public class VertexController : MonoBehaviour
         return actualRowsData;
     }
 
+    
+    
     public string GetVertexLabel()
     {
         if (vertexLabelTextComponent != null)
@@ -273,7 +342,7 @@ public class VertexController : MonoBehaviour
                 }
             }
             Debug.LogWarning($"VertexLabelTextComponent not assigned and 'Canvas/Label' with a Text component not found on '{gameObject.name}'. Vertex label will be empty.", this);
-            return string.Empty; // Or a default name, or null
+            return string.Empty;
         }
     }
 
@@ -281,21 +350,19 @@ public class VertexController : MonoBehaviour
     {
         if (_managedRows == null)
         {
-            Debug.LogWarning($"[VertexController GetExportData] '{gameObject.name}' (ID using PersistentId for this log: {this.PersistentId}): _managedRows was null. Attempting to find and sort rows now...", this);
+            Debug.LogWarning($"[VertexController GetExportData] '{gameObject.name}' (PersistentID: {this.PersistentId}): _managedRows was null. Attempting to find and sort rows now...", this);
             FindAndSortRows();
         }
 
-        string currentVertexDisplayId = GetVertexLabel(); // This should be "v0", "v1", etc.
+        string derivedIdAndLabel = GetDerivedExportIdAndLabel();
 
         VertexExportData data = new VertexExportData
         {
-            // id = this.PersistentId,             // OLD: Using GUID
-            id = currentVertexDisplayId,           // << NEW: Using the "vX" display name as the ID
-            vertexLabel = currentVertexDisplayId,  // This was already correct
+            id = derivedIdAndLabel,
+            vertexLabel = derivedIdAndLabel,
             rowsData = GetAllRowsData()
         };
 
-        // Update debug log to reflect the ID being used for export
         Debug.Log($"[VertexController GetExportData for Export ID '{data.id}'] " +
                   $"Label: '{data.vertexLabel}', " +
                   $"Exporting with rowsData count: {(data.rowsData?.Count ?? -1)}. " +

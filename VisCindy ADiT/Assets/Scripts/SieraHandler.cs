@@ -135,17 +135,16 @@ public class SieraHandler : MonoBehaviour
     }
 
     GameObject newVertexInstance = Instantiate(vertexPrefab, vertexHolder.transform, false);
-    string newVertexDisplayName = "v" + nextVertexIdCounter;
+    string newVertexDisplayName = "v" + nextVertexIdCounter; // e.g., "v0", "v1"
 
-    // 1. Set the visual name on the vertex circle itself
-    // This assumes your vertexPrefab has a child named "Text (TMP)" with a TextMeshProUGUI component.
+    // 1. Set visual name on the vertex circle
     Transform visualTextTransform = newVertexInstance.transform.Find("Text (TMP)");
     if (visualTextTransform != null)
     {
         TextMeshProUGUI visualNameLabel = visualTextTransform.GetComponent<TextMeshProUGUI>();
         if (visualNameLabel != null)
         {
-            visualNameLabel.text = newVertexDisplayName;
+            visualNameLabel.text = newVertexDisplayName; // Sets "v0", "v1" visually
         }
         else
         {
@@ -158,16 +157,16 @@ public class SieraHandler : MonoBehaviour
     }
 
     // 2. Optional: Set the GameObject's name for easier identification in the Hierarchy
-    newVertexInstance.name = $"Vertex_{newVertexDisplayName}"; // e.g., Vertex_v0, Vertex_v1
+    newVertexInstance.name = $"Vertex_{newVertexDisplayName}";
 
     // 3. Update the label within the VertexController (for exported vertexLabel)
     // This assumes VertexController is on a child (like DropdownMenu) and has 'vertexLabelTextComponent' assigned.
     VertexController vc = newVertexInstance.GetComponentInChildren<VertexController>(true);
     if (vc != null)
     {
-        if (vc.vertexLabelTextComponent != null) // This is the TMP_Text for the label inside the dropdown menu
+        if (vc.vertexLabelTextComponent != null)
         {
-            vc.vertexLabelTextComponent.text = newVertexDisplayName;
+            vc.vertexLabelTextComponent.text = newVertexDisplayName; // THIS IS THE CRUCIAL LINE
         }
         else
         {
@@ -308,127 +307,129 @@ public class SieraHandler : MonoBehaviour
     /// </summary>
     /// <returns>A GraphExportData object representing the entire graph.</returns>
     public GraphExportData GetGraphDataForExport()
+{
+    // The constructor of GraphExportData already sets graphData.limit to "None" by default
+    GraphExportData graphData = new GraphExportData();
+
+    Debug.Log("--- [EXPORT] Starting GetGraphDataForExport ---");
+
+    // 1. Export Vertices
+    if (vertexHolder != null)
     {
-        // The constructor of GraphExportData already sets graphData.limit to "None" by default
-        GraphExportData graphData = new GraphExportData();
-
-        Debug.Log("--- [EXPORT] Starting GetGraphDataForExport ---");
-
-        // 1. Export Vertices (Your existing logic)
-        if (vertexHolder != null)
+        Debug.Log($"[EXPORT] Processing VertexHolder: '{vertexHolder.name}'. It has {vertexHolder.transform.childCount} children.", this);
+        for (int i = 0; i < vertexHolder.transform.childCount; i++)
         {
-            for (int i = 0; i < vertexHolder.transform.childCount; i++)
+            Transform vertexTransform = vertexHolder.transform.GetChild(i);
+            // Debug.Log($"[EXPORT] Checking child {i}: '{vertexTransform.name}' under VertexHolder.", vertexTransform); // Optional: very verbose
+
+            VertexController vc = vertexTransform.GetComponentInChildren<VertexController>(true); // Search in children, include inactive
+            if (vc != null)
             {
-                Transform vertexTransform = vertexHolder.transform.GetChild(i);
-                VertexController vc = vertexTransform.GetComponentInChildren<VertexController>(true);
-                if (vc != null)
-                {
-                    graphData.vertices.Add(vc.GetExportData());
-                }
-                else
-                {
-                    Debug.LogWarning($"[EXPORT] Child '{vertexTransform.name}' of VertexHolder (or its children) does NOT have a VertexController component. Skipping this vertex.", vertexTransform);
-                }
+                // GetExportData in VertexController now uses GetDerivedExportIdAndLabel() internally
+                graphData.vertices.Add(vc.GetExportData());
+            }
+            else
+            {
+                Debug.LogWarning($"[EXPORT] Child '{vertexTransform.name}' of VertexHolder (or its children) does NOT have a VertexController component. Skipping this vertex.", vertexTransform);
             }
         }
-        else
+    }
+    else
+    {
+        Debug.LogWarning("[EXPORT] VertexHolder not assigned in SieraHandler. Cannot export vertex data.", this);
+    }
+    Debug.Log($"[EXPORT] Vertices processed for export: {graphData.vertices.Count}");
+
+    // 2. Export Edges
+    if (activeEdges == null)
+    {
+        Debug.LogWarning("[EXPORT] SieraHandler.activeEdges list is null. No edges will be exported.", this);
+        activeEdges = new List<Edge>(); // Ensure it's not null to prevent further errors, though this indicates an issue.
+    }
+
+    Debug.Log($"[EXPORT] Processing {activeEdges.Count} active edges for export.");
+    foreach (Edge edge in activeEdges)
+    {
+        if (edge == null || edge.lineRenderer == null)
         {
-            Debug.LogWarning("[EXPORT] VertexHolder not assigned in SieraHandler. Cannot export vertex data.", this);
+            Debug.LogWarning("[EXPORT] Encountered a null or improperly initialized edge in activeEdges list. Skipping.", this);
+            continue;
         }
-        Debug.Log($"[EXPORT] Vertices processed for export: {graphData.vertices.Count}");
 
-        // 2. Export Edges (Your existing logic)
-        if (activeEdges != null)
+        if (edge.startNode != null && edge.endNode != null)
         {
-            Debug.Log($"[EXPORT] Processing {activeEdges.Count} active edges for export.");
-            foreach (Edge edge in activeEdges)
+            VertexController startVC = edge.startNode.GetComponentInChildren<VertexController>(true);
+            VertexController endVC = edge.endNode.GetComponentInChildren<VertexController>(true);
+
+            if (startVC != null && endVC != null)
             {
-                if (edge == null || edge.lineRenderer == null)
+                // Initialize EdgeExportData (constructor sets defaults for UI fields)
+                EdgeExportData edgeExport = new EdgeExportData
                 {
-                    Debug.LogWarning("[EXPORT] Encountered a null or improperly initialized edge in activeEdges list. Skipping.", this);
-                    continue;
-                }
+                    fromVertexId = startVC.GetDerivedExportIdAndLabel(), // Using "vX" name from VertexController
+                    toVertexId = endVC.GetDerivedExportIdAndLabel(),   // Using "vX" name from VertexController
+                    edgeName = edge.lineRenderer.gameObject.name
+                };
 
-                if (edge.startNode != null && edge.endNode != null)
+                // Try to get data from the Edge's UI instance
+                if (edge.uiElementInstance != null)
                 {
-                    VertexController startVC = edge.startNode.GetComponentInChildren<VertexController>(true);
-                    VertexController endVC = edge.endNode.GetComponentInChildren<VertexController>(true);
-
-                    if (startVC != null && endVC != null)
+                    EdgeUIDataController uiController = edge.uiElementInstance.GetComponent<EdgeUIDataController>();
+                    if (uiController != null)
                     {
-                        // Initialize EdgeExportData (constructor sets defaults for new fields)
-                        EdgeExportData edgeExport = new EdgeExportData
-                        {
-                            fromVertexId = startVC.GetVertexLabel(), // Using "vX" name
-                            toVertexId = endVC.GetVertexLabel(),   // Using "vX" name
-                            edgeName = edge.lineRenderer.gameObject.name
-                        };
-                        
-                        // Try to get data from the Edge's UI instance
-                        if (edge.uiElementInstance != null)
-                        {
-                            EdgeUIDataController uiController = edge.uiElementInstance.GetComponent<EdgeUIDataController>();
-                            if (uiController != null)
-                            {
-                                EdgeUIDataController.EdgeUIValues uiData = uiController.GetCurrentValues();
-                                edgeExport.relationshipType = uiData.RelationshipType;
-                                edgeExport.minValue = uiData.MinValue;
-                                edgeExport.maxValue = uiData.MaxValue;
-                                // Debug.Log($"[EXPORT] Edge '{edgeExport.edgeName}' UI Data: Rel='{uiData.RelationshipType}', Min='{uiData.MinValue}', Max='{uiData.MaxValue}'");
-                            }
-                            else
-                            {
-                                Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a uiElementInstance but no EdgeUIDataController script found on it. Exporting default/empty UI data for this edge.", edge.uiElementInstance);
-                            }
-                        }
-                        else if (!edge.isSelfLoop) // Only warn if UI is missing for non-self-loops (where UI is expected)
-                        {
-                            Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has no uiElementInstance. Exporting default/empty UI data for this edge.", edge.lineRenderer.gameObject);
-                        }
-                        // For self-loops, uiElementInstance is typically null/inactive, so default values in EdgeExportData are appropriate.
-
-                        graphData.edges.Add(edgeExport);
+                        EdgeUIDataController.EdgeUIValues uiData = uiController.GetCurrentValues();
+                        edgeExport.relationshipType = uiData.RelationshipType;
+                        edgeExport.minValue = uiData.MinValue;
+                        edgeExport.maxValue = uiData.MaxValue;
+                        // Debug.Log($"[EXPORT] Edge '{edgeExport.edgeName}' UI Data: Rel='{uiData.RelationshipType}', Min='{uiData.MinValue}', Max='{uiData.MaxValue}'");
                     }
                     else
                     {
-                        if(startVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on start node '{edge.startNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.startNode);
-                        if(endVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on end node '{edge.endNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.endNode);
+                        Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a uiElementInstance but no EdgeUIDataController script found on it. Exporting default UI data for this edge.", edge.uiElementInstance);
                     }
                 }
-                else
+                else if (!edge.isSelfLoop) // Only warn if UI is missing for non-self-loops
                 {
-                    Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a null startNode or endNode. Skipping this edge.", edge.lineRenderer.gameObject);
+                    Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has no uiElementInstance. Exporting default UI data for this edge.", edge.lineRenderer.gameObject);
                 }
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[EXPORT] SieraHandler.activeEdges list is null. No edges will be exported.", this);
-        }
-        Debug.Log($"[EXPORT] Edges processed and added to export list: {graphData.edges.Count}");
-        Debug.Log($"[EXPORT] Edges processed and added to export list: {graphData.edges.Count}");
-        
-        // 3. Add the Limit value
-        if (limitValueInputField != null)
-        {
-            if (!string.IsNullOrEmpty(limitValueInputField.text))
-            {
-                graphData.limit = limitValueInputField.text;
-            }
-            // If the input field is empty, graphData.limit will remain "None" (its default from constructor)
-            // or you could explicitly set it to "" if you prefer that over "None" for empty.
-            // else { graphData.limit = ""; } // If you prefer empty string for empty input
-            Debug.Log($"[EXPORT] Limit value for export: '{graphData.limit}' (Read from input field: '{limitValueInputField.text}')");
-        }
-        else
-        {
-            Debug.LogWarning("[EXPORT] SieraHandler.limitValueInputField is NOT assigned in the Inspector! 'limit' will use default value ('None').", this);
-            // graphData.limit will be "None" as set in its constructor
-        }
+                // For self-loops, uiElementInstance is typically null/inactive, so default values in EdgeExportData are used.
 
-        Debug.Log("--- [EXPORT] Finished GetGraphDataForExport ---");
-        return graphData;
+                graphData.edges.Add(edgeExport);
+                Debug.Log($"[EXPORT] Added Edge: From ID '{edgeExport.fromVertexId}' To ID '{edgeExport.toVertexId}' (Name: '{edgeExport.edgeName}', Rel: '{edgeExport.relationshipType}')");
+
+            }
+            else
+            {
+                if (startVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on start node '{edge.startNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.startNode);
+                if (endVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on end node '{edge.endNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.endNode);
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a null startNode or endNode. Skipping this edge.", edge.lineRenderer.gameObject);
+        }
     }
+    Debug.Log($"[EXPORT] Edges processed and added to export list: {graphData.edges.Count}");
+
+    // 3. Add the Limit value
+    if (limitValueInputField != null)
+    {
+        if (!string.IsNullOrEmpty(limitValueInputField.text))
+        {
+            graphData.limit = limitValueInputField.text;
+        }
+        // If the input field is empty, graphData.limit will remain "None" (its default from GraphExportData constructor)
+        Debug.Log($"[EXPORT] Limit value for export: '{graphData.limit}' (Read from input field: '{limitValueInputField.text}')");
+    }
+    else
+    {
+        Debug.LogWarning("[EXPORT] SieraHandler.limitValueInputField is NOT assigned in the Inspector! 'limit' will use default value ('None').", this);
+        // graphData.limit will be "None" as set in its constructor
+    }
+
+    Debug.Log("--- [EXPORT] Finished GetGraphDataForExport ---");
+    return graphData;
+}
 
     /// <summary>
     /// Example method to get the graph data, convert it to JSON, and print it to the console.
