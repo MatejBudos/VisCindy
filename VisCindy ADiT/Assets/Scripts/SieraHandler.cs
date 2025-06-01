@@ -1,12 +1,19 @@
-using UnityEngine;
+using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TMPro;
+
 using System;
 using UnityEngine.Networking;
 using System.Text; // Required for List
+using UnityEngine;
+
 
 public class SieraHandler : MonoBehaviour
 {
@@ -15,6 +22,16 @@ public class SieraHandler : MonoBehaviour
     public GameObject vertexPrefab;
     public GameObject vertexHolder;
     public GameObject edgeHolder;
+    
+    [Header("API Configuration")]
+    [Tooltip("Base URL for the API. Example: http://127.0.0.1:5000/api/")]
+    public string baseApiUrl = "http://127.0.0.1:5000/api/";
+    [Tooltip("The identifier/name of the graph whose properties you want to fetch.")]
+    public string graphIdentifierForProperties = "myDefaultGraph";
+    
+    private static readonly CookieContainer SieraCookieContainer = new CookieContainer();
+    private HttpClientHandler _sieraHttpClientHandler;
+    private HttpClient _sieraHttpClient;
     
     [Header("Graph Export Configuration")]
     [Tooltip("Assign the TMP_InputField from your 'Limit' UI panel here.")]
@@ -31,6 +48,10 @@ public class SieraHandler : MonoBehaviour
     private GameObject firstSelectedVertexForEdge = null;
     private List<Edge> activeEdges = new List<Edge>(); 
     private int nextVertexIdCounter = 0;
+    
+    public List<string> LastFetchedNodeProperties { get; private set; } = new List<string>();
+    public static event System.Action OnGraphNodePropertiesAvailable; 
+
 
     [Header("Edge UI Configuration")]
     [Tooltip("Prefab for the UI element (button/submenu) to show above edges.")]
@@ -50,6 +71,28 @@ public class SieraHandler : MonoBehaviour
         {
             Debug.LogWarning("Multiple SieraHandler instances detected. Destroying this one.", this);
             Destroy(gameObject);
+            return; // Important to return if destroying, to prevent further execution
+        }
+
+        // Initialize HttpClient
+        _sieraHttpClientHandler = new HttpClientHandler
+        {
+            CookieContainer = SieraCookieContainer,
+            UseCookies = true
+        };
+        _sieraHttpClient = new HttpClient(_sieraHttpClientHandler, disposeHandler: false);
+    }
+    
+    void OnDestroy()
+    {
+        _sieraHttpClient?.Dispose();
+        _sieraHttpClient = null;
+        _sieraHttpClientHandler?.Dispose();
+        _sieraHttpClientHandler = null;
+
+        if (Instance == this)
+        {
+            Instance = null;
         }
     }
 
@@ -76,6 +119,11 @@ public class SieraHandler : MonoBehaviour
             // Pass the Z offset for the UI when updating the edge position
             edge.UpdatePosition(lineZDepth, edgeUI_Z_OffsetFromLine); // << MODIFIED
         }
+    }
+
+    private void Start()
+    {
+        TriggerFetchGraphProperties();
     }
 
     public void AddNewNodeObject()
@@ -297,34 +345,74 @@ public class SieraHandler : MonoBehaviour
         // 2. Export Edges (Your existing logic)
         if (activeEdges != null)
         {
+            Debug.Log($"[EXPORT] Processing {activeEdges.Count} active edges for export.");
             foreach (Edge edge in activeEdges)
             {
-                // ... (your existing edge export logic using startVC.GetVertexLabel() and endVC.GetVertexLabel()) ...
-                 if (edge.startNode != null && edge.endNode != null)
+                if (edge == null || edge.lineRenderer == null)
+                {
+                    Debug.LogWarning("[EXPORT] Encountered a null or improperly initialized edge in activeEdges list. Skipping.", this);
+                    continue;
+                }
+
+                if (edge.startNode != null && edge.endNode != null)
                 {
                     VertexController startVC = edge.startNode.GetComponentInChildren<VertexController>(true);
                     VertexController endVC = edge.endNode.GetComponentInChildren<VertexController>(true);
 
                     if (startVC != null && endVC != null)
                     {
+                        // Initialize EdgeExportData (constructor sets defaults for new fields)
                         EdgeExportData edgeExport = new EdgeExportData
                         {
-                            fromVertexId = startVC.GetVertexLabel(),
-                            toVertexId = endVC.GetVertexLabel(),
+                            fromVertexId = startVC.GetVertexLabel(), // Using "vX" name
+                            toVertexId = endVC.GetVertexLabel(),   // Using "vX" name
                             edgeName = edge.lineRenderer.gameObject.name
                         };
+                        
+                        // Try to get data from the Edge's UI instance
+                        if (edge.uiElementInstance != null)
+                        {
+                            EdgeUIDataController uiController = edge.uiElementInstance.GetComponent<EdgeUIDataController>();
+                            if (uiController != null)
+                            {
+                                EdgeUIDataController.EdgeUIValues uiData = uiController.GetCurrentValues();
+                                edgeExport.relationshipType = uiData.RelationshipType;
+                                edgeExport.minValue = uiData.MinValue;
+                                edgeExport.maxValue = uiData.MaxValue;
+                                // Debug.Log($"[EXPORT] Edge '{edgeExport.edgeName}' UI Data: Rel='{uiData.RelationshipType}', Min='{uiData.MinValue}', Max='{uiData.MaxValue}'");
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a uiElementInstance but no EdgeUIDataController script found on it. Exporting default/empty UI data for this edge.", edge.uiElementInstance);
+                            }
+                        }
+                        else if (!edge.isSelfLoop) // Only warn if UI is missing for non-self-loops (where UI is expected)
+                        {
+                            Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has no uiElementInstance. Exporting default/empty UI data for this edge.", edge.lineRenderer.gameObject);
+                        }
+                        // For self-loops, uiElementInstance is typically null/inactive, so default values in EdgeExportData are appropriate.
+
                         graphData.edges.Add(edgeExport);
                     }
-                    // ... else warning ...
+                    else
+                    {
+                        if(startVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on start node '{edge.startNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.startNode);
+                        if(endVC == null) Debug.LogWarning($"[EXPORT] Could not find VertexController on end node '{edge.endNode.name}' for edge '{edge.lineRenderer.gameObject.name}'.", edge.endNode);
+                    }
                 }
-                // ... else warning ...
+                else
+                {
+                    Debug.LogWarning($"[EXPORT] Edge '{edge.lineRenderer.gameObject.name}' has a null startNode or endNode. Skipping this edge.", edge.lineRenderer.gameObject);
+                }
             }
-        } else {
-            Debug.LogWarning("[EXPORT] activeEdges list is null in SieraHandler.", this);
         }
-        Debug.Log($"[EXPORT] Edges processed for export: {graphData.edges.Count}");
-
-
+        else
+        {
+            Debug.LogWarning("[EXPORT] SieraHandler.activeEdges list is null. No edges will be exported.", this);
+        }
+        Debug.Log($"[EXPORT] Edges processed and added to export list: {graphData.edges.Count}");
+        Debug.Log($"[EXPORT] Edges processed and added to export list: {graphData.edges.Count}");
+        
         // 3. Add the Limit value
         if (limitValueInputField != null)
         {
@@ -513,6 +601,133 @@ public class SieraHandler : MonoBehaviour
             matchObjects.Add(vertex.Value);
         }
         return matchObjects;
+    }
+    
+    [ContextMenu("Fetch Graph Properties from API (Log JSON)")]
+    public void TriggerFetchGraphProperties()
+    {
+        if (string.IsNullOrEmpty(graphIdentifierForProperties))
+        {
+            Debug.LogError("[API] 'Graph Identifier For Properties' is not set in SieraHandler Inspector.", this);
+            return;
+        }
+        if (_sieraHttpClient == null)
+        {
+            Debug.LogError("[API] HttpClient is not initialized. Ensure Awake() has run correctly.", this);
+            // Optionally re-initialize here if appropriate, but Awake should handle it.
+            // Awake(); // Be careful with calling Awake manually.
+            return;
+        }
+        StartCoroutine(FetchGraphPropertiesCoroutine(graphIdentifierForProperties));
+    }
+
+    private IEnumerator FetchGraphPropertiesCoroutine(string graphName)
+    {
+        // Ensure baseApiUrl ends with a slash if the "properties" endpoint doesn't start with one.
+        string trimmedBaseApiUrl = baseApiUrl.TrimEnd('/');
+        string endpoint = "properties"; // The specific endpoint for graph properties
+        string fullApiUrl = $"{trimmedBaseApiUrl}/{endpoint}/{Uri.EscapeDataString(graphName)}";
+
+        Debug.Log($"[API] Fetching graph properties from: {fullApiUrl}");
+
+        Task<HttpResponseMessage> getTask = null;
+        try
+        {
+            getTask = _sieraHttpClient.GetAsync(fullApiUrl);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[API] Exception when trying to initiate GetAsync for '{graphName}': {ex.ToString()}", this);
+            LastFetchedNodeProperties.Clear(); // Clear any old properties
+            OnGraphNodePropertiesAvailable?.Invoke(); // Notify that an attempt was made (and failed)
+            yield break; // Exit coroutine
+        }
+
+        // Wait for the asynchronous HTTP GET task to complete
+        yield return new WaitUntil(() => getTask.IsCompleted);
+
+        string responseData = null;
+
+        try
+        {
+            if (getTask.IsFaulted)
+            {
+                Debug.LogError($"[API] Task faulted for graph '{graphName}': {getTask.Exception?.ToString()}", this);
+                if (getTask.Exception?.InnerException != null)
+                {
+                    Debug.LogError($"[API] Inner Exception: {getTask.Exception.InnerException?.ToString()}", this);
+                }
+                LastFetchedNodeProperties.Clear();
+                OnGraphNodePropertiesAvailable?.Invoke();
+            }
+            else if (getTask.IsCanceled)
+            {
+                Debug.LogError($"[API] Task to fetch properties for graph '{graphName}' was canceled.", this);
+                LastFetchedNodeProperties.Clear();
+                OnGraphNodePropertiesAvailable?.Invoke();
+            }
+            else // Task completed (successfully or with an HTTP error status code)
+            {
+                HttpResponseMessage responseMessage = getTask.Result;
+                using (responseMessage) // Ensure the HttpResponseMessage is disposed
+                {
+                    Task<string> readTask = responseMessage.Content.ReadAsStringAsync();
+                    new WaitUntil(() => readTask.IsCompleted);
+
+                    if (readTask.IsFaulted)
+                    {
+                        Debug.LogError($"[API] Failed to read response content for graph '{graphName}': {readTask.Exception?.ToString()}", this);
+                        LastFetchedNodeProperties.Clear();
+                        OnGraphNodePropertiesAvailable?.Invoke();
+                    }
+                    else
+                    {
+                        responseData = readTask.Result;
+                        if (responseMessage.IsSuccessStatusCode)
+                        {
+                            Debug.Log($"[API] Success! Response JSON for graph '{graphName}':\n{responseData}");
+                            try
+                            {
+                                JObject jsonData = JObject.Parse(responseData); // Using Newtonsoft.Json.Linq
+                                Debug.Log($"[API] Successfully parsed JSON with Newtonsoft. Root keys found: {string.Join(", ", jsonData.Properties().Select(p => p.Name))}");
+
+                                // Extract and store node_properties
+                                JArray nodePropsJsonArray = jsonData["node_properties"] as JArray;
+                                if (nodePropsJsonArray != null)
+                                {
+                                    LastFetchedNodeProperties = nodePropsJsonArray.ToObject<List<string>>(); // Using Newtonsoft.Json
+                                    Debug.Log($"[API] Extracted {LastFetchedNodeProperties.Count} node properties: {string.Join(", ", LastFetchedNodeProperties)}");
+                                }
+                                else
+                                {
+                                    Debug.LogWarning("[API] 'node_properties' key not found or not an array in JSON response. Node properties list will be empty.");
+                                    LastFetchedNodeProperties.Clear();
+                                }
+                                OnGraphNodePropertiesAvailable?.Invoke(); // Fire event AFTER processing
+                            }
+                            catch (JsonReaderException jsonEx)
+                            {
+                                Debug.LogError($"[API] Failed to parse JSON response with Newtonsoft: {jsonEx.Message}\nRaw data was: {responseData}", this);
+                                LastFetchedNodeProperties.Clear();
+                                OnGraphNodePropertiesAvailable?.Invoke(); // Still invoke, so UI can clear if needed
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError($"[API] HTTP Error fetching properties for graph '{graphName}': {responseMessage.StatusCode} - {responseMessage.ReasonPhrase}\nResponse Body: {responseData}", this);
+                            LastFetchedNodeProperties.Clear();
+                            OnGraphNodePropertiesAvailable?.Invoke(); // Notify to clear/reset dropdowns
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e) // Catch any other synchronous exceptions that might occur during result processing
+        {
+            Debug.LogError($"[API] General exception during API call result processing for graph '{graphName}': {e.ToString()}", this);
+            LastFetchedNodeProperties.Clear();
+            OnGraphNodePropertiesAvailable?.Invoke();
+        }
     }
     
 }
