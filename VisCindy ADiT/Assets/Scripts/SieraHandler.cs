@@ -475,18 +475,53 @@ public class SieraHandler : MonoBehaviour
 
         //prvy krok do buildera
         var tmpVertices = GraphVerticesToMatchObjects(graphData);
-        List<MatchObject> matchObjects = ConnectMatchObjects(graphData, tmpVertices);
+        Dictionary<string,MatchObject> matchObjects = ConnectMatchObjects(graphData, tmpVertices);
 
-
+        Apoc apoc = graphData.apoc;
         CypherQueryBuilder cypherQueryBuilder = new NodeQueryBuilder();
-        string query = cypherQueryBuilder.SetNeoNode(matchObjects).AddWhereCondition().Build();
+        if (wasApocUsed(apoc))
+        {
+            cypherQueryBuilder = new TraversalQueryBuilder();
+            Traversal traversal = new ExpandConfigTraversal();
+            traversal.AddTerminatorNode(matchObjects[apoc.end]);
+            if (apoc.TraversalType == "Spanning")
+            {
+                traversal = new SpanningTreeTraversal();
+            }
+            if (apoc.TraversalType == "Jumps")
+            {
+                traversal = new ExpandToXJumpsTraversal();
+            }
+
+            traversal.startNode = matchObjects[apoc.start];
+            if (apoc.min != null || apoc.min != "")
+            {
+                traversal.minLevel = apoc.min;
+            }
+            if (apoc.max != null || apoc.max != "")
+            {
+                traversal.maxLevel = apoc.min;
+            }
+            traversal.uniqueness = apoc.unique;
+            traversal.RelationshipFilter = apoc.relFilter;
+            cypherQueryBuilder.SetTraversal(traversal);
+        }
+
+        
+        string query = cypherQueryBuilder.SetNeoNode(matchObjects.Values.ToList()).AddWhereCondition().Build();
         Debug.Log( query );
         SendQuery( query, false );
 
 
     }
+    private bool wasApocUsed(Apoc apoc)
+    {
+        return apoc.start != null;
+    }
 
-    private void SendQuery( string query, bool apoc ){
+
+    private void SendQuery(string query, bool apoc)
+    {
         /*
         QueryPayload qp = new QueryPayload( query, apoc );
         string json = JsonConvert.SerializeObject( qp );
@@ -577,9 +612,9 @@ public class SieraHandler : MonoBehaviour
     return null;
 }
 
-    private List<MatchObject> ConnectMatchObjects(GraphExportData graphData, Dictionary<string, MatchObject> Vertices)
+    private Dictionary<string, MatchObject> ConnectMatchObjects(GraphExportData graphData, Dictionary<string, MatchObject> Vertices)
     {
-        List<MatchObject> matchObjects = new List<MatchObject>();
+        Dictionary<string,MatchObject> matchObjects = new Dictionary<string,MatchObject>();
         HashSet<string> connectedNodes = new HashSet<string>();
         foreach (EdgeExportData edge in graphData.edges)
         {
@@ -591,14 +626,14 @@ public class SieraHandler : MonoBehaviour
             MatchObject pattern = new MatchPattern(fromNode, e, toNode);
             connectedNodes.Add(edge.fromVertexId);
             connectedNodes.Add(edge.toVertexId);
-            matchObjects.Add(pattern);
+            matchObjects[fromNode.NeoVar + e.NeoVar + toNode.NeoVar] = pattern;
         }
 
         foreach (var vertex in Vertices)
         {
             if (connectedNodes.Contains(vertex.Key))
             { continue; }
-            matchObjects.Add(vertex.Value);
+            matchObjects[vertex.Key] = vertex.Value;
         }
         return matchObjects;
     }
