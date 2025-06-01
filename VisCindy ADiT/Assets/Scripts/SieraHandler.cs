@@ -4,7 +4,9 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TMPro;
-using System; // Required for List
+using System;
+using UnityEngine.Networking;
+using System.Text; // Required for List
 
 public class SieraHandler : MonoBehaviour
 {
@@ -389,7 +391,38 @@ public class SieraHandler : MonoBehaviour
 
 
         CypherQueryBuilder cypherQueryBuilder = new NodeQueryBuilder();
-        Debug.Log(cypherQueryBuilder.SetNeoNode(matchObjects).AddWhereCondition().Build());
+        string query = cypherQueryBuilder.SetNeoNode(matchObjects).AddWhereCondition().Build();
+        Debug.Log( query );
+        SendQuery( query, false );
+
+
+    }
+
+    private void SendQuery( string query, bool apoc ){
+        /*
+        QueryPayload qp = new QueryPayload( query, apoc );
+        string json = JsonConvert.SerializeObject( qp );
+        Debug.Log(json);
+        using (UnityWebRequest request = new UnityWebRequest(apiUrl + "graph/query", "POST"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("POST successful: " + request.downloadHandler.text);
+                var _responseData1 = request.downloadHandler.text;
+            }
+            else
+            {
+                Debug.LogError("POST failed: " + request.error);
+            }
+        }
+        */
 
     }
 

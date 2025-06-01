@@ -14,11 +14,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 
-[System.Serializable]
-public class QueryPayload
-{
-    public string query;
-}
+
 public class DrawGraph : MonoBehaviour, ISingleton
 {
     public GameObject graphPrefab;
