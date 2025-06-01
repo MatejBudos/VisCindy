@@ -1,30 +1,33 @@
-using UnityEngine;
-
-[System.Serializable] 
+[System.Serializable]
 public class RowData
 {
-    public string RowObjectName; // Name of the Row's GameObject for identification/debugging
+    // Old: public string RowObjectName;
+    public string tag; // << RENAMED from RowObjectName
 
-    [Header("Layout Information")]
-    public float OffsetX;       // Hierarchical offset value
+    public float OffsetX; // Stays as is
 
-    [Header("Main Dropdown Data")]
-    public string MainDropdownValueText;
-    public int MainDropdownValueIndex;
+    // Old: public string MainDropdownValueText;
+    public string attribute; // << RENAMED from MainDropdownValueText
+    // MainDropdownValueIndex is to be deleted
 
-    [Header("Dropdown 1 Data")]
-    public string Dropdown1ValueText;
-    public int Dropdown1ValueIndex;
+    // Old: public string Dropdown1ValueText;
+    public string operatorValue; // << RENAMED from Dropdown1ValueText
+    // Dropdown1ValueIndex is to be deleted
 
-    [Header("Dropdown 2 Data")]
-    public string Dropdown2ValueText;
-    public int Dropdown2ValueIndex;
+    // Old: public string InputFieldValue2;
+    public string value; // << RENAMED from InputFieldValue2
 
-    // Consider adding fields for any other data you might need from the row,
-    // e.g., input field values, toggle states, button identifiers.
+    public string SourceRowName; // Stays as is
+
+    // Old: public string TriggerButtonType;
+    public string logic; // << RENAMED from TriggerButtonType
+
+    // Constructor or other methods might be useful if you have them,
+    // but are not strictly necessary for JsonUtility serialization of public fields.
 
     public override string ToString()
     {
-        return $"Row: '{RowObjectName}', OffsetX: {OffsetX:F2}, MainDrop: '{MainDropdownValueText}' (Idx:{MainDropdownValueIndex}), Drop1: '{Dropdown1ValueText}' (Idx:{Dropdown1ValueIndex}), Drop2: '{Dropdown2ValueText}' (Idx:{Dropdown2ValueIndex})";
+        // Update ToString to reflect new field names if you use it for debugging
+        return $"Row Tag: '{tag}', OffsetX: {OffsetX:F2}, Attribute: '{attribute}', Operator: '{operatorValue}', Value: '{value}', Source: '{SourceRowName}', Logic: '{logic}'";
     }
 }

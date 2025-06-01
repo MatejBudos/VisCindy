@@ -23,7 +23,8 @@ public class SieraHandler : MonoBehaviour
 
     private bool isInEdgeMode = false;
     private GameObject firstSelectedVertexForEdge = null;
-    private List<Edge> activeEdges = new List<Edge>(); // List to track active edges
+    private List<Edge> activeEdges = new List<Edge>(); 
+    private int nextVertexIdCounter = 0;
 
     [Header("Edge UI Configuration")]
     [Tooltip("Prefab for the UI element (button/submenu) to show above edges.")]
@@ -46,10 +47,6 @@ public class SieraHandler : MonoBehaviour
         }
     }
 
-    void Start()
-    {
-
-    }
 
     void Update()
     {
@@ -76,16 +73,77 @@ public class SieraHandler : MonoBehaviour
     }
 
     public void AddNewNodeObject()
+{
+    if (vertexPrefab == null)
     {
-        if (vertexPrefab == null || vertexHolder == null)
-            return;
+        Debug.LogError("AddNewNodeObject: Vertex Prefab is not assigned in SieraHandler!", this);
+        return;
+    }
+    if (vertexHolder == null)
+    {
+        Debug.LogError("AddNewNodeObject: Vertex Holder is not assigned in SieraHandler!", this);
+        return;
+    }
 
-        GameObject vertex = Instantiate(vertexPrefab, vertexHolder.transform, false);
-        if (!vertex.activeSelf)
+    GameObject newVertexInstance = Instantiate(vertexPrefab, vertexHolder.transform, false);
+    string newVertexDisplayName = "v" + nextVertexIdCounter;
+
+    // 1. Set the visual name on the vertex circle itself
+    // This assumes your vertexPrefab has a child named "Text (TMP)" with a TextMeshProUGUI component.
+    Transform visualTextTransform = newVertexInstance.transform.Find("Text (TMP)");
+    if (visualTextTransform != null)
+    {
+        TextMeshProUGUI visualNameLabel = visualTextTransform.GetComponent<TextMeshProUGUI>();
+        if (visualNameLabel != null)
         {
-            vertex.SetActive(true);
+            visualNameLabel.text = newVertexDisplayName;
+        }
+        else
+        {
+            Debug.LogWarning($"AddNewNodeObject: Could not find TextMeshProUGUI component on 'Text (TMP)' child of instantiated vertex '{newVertexInstance.name}'.", newVertexInstance);
         }
     }
+    else
+    {
+        Debug.LogWarning($"AddNewNodeObject: Could not find 'Text (TMP)' child GameObject in instantiated vertex prefab '{newVertexInstance.name}'. Cannot set visual vertex name.", newVertexInstance);
+    }
+
+    // 2. Optional: Set the GameObject's name for easier identification in the Hierarchy
+    newVertexInstance.name = $"Vertex_{newVertexDisplayName}"; // e.g., Vertex_v0, Vertex_v1
+
+    // 3. Update the label within the VertexController (for exported vertexLabel)
+    // This assumes VertexController is on a child (like DropdownMenu) and has 'vertexLabelTextComponent' assigned.
+    VertexController vc = newVertexInstance.GetComponentInChildren<VertexController>(true);
+    if (vc != null)
+    {
+        if (vc.vertexLabelTextComponent != null) // This is the TMP_Text for the label inside the dropdown menu
+        {
+            vc.vertexLabelTextComponent.text = newVertexDisplayName;
+        }
+        else
+        {
+            // If not assigned, GetVertexLabel() might try a dynamic find, but explicit setting is safer.
+            Debug.LogWarning($"AddNewNodeObject: VertexController on '{newVertexInstance.name}' does not have 'vertexLabelTextComponent' assigned. Exported vertexLabel might not reflect '{newVertexDisplayName}' unless found dynamically.", vc);
+            // You could also directly set a field on vc if GetVertexLabel() reads from that instead of a TMP component.
+            // For example, if VertexController had `public void SetExportLabel(string label)`, you'd call that.
+            // But since GetVertexLabel() reads from vertexLabelTextComponent, updating that is the current way.
+        }
+        // Note: The PersistentId for the vertex (the GUID) is handled by VertexController.Awake()
+    }
+    else
+    {
+        Debug.LogWarning($"AddNewNodeObject: Could not find VertexController component in children of instantiated vertex '{newVertexInstance.name}'. Exported label will not be set here.", newVertexInstance);
+    }
+
+    nextVertexIdCounter++; // Increment for the next vertex
+
+    if (!newVertexInstance.activeSelf)
+    {
+        newVertexInstance.SetActive(true);
+    }
+
+    Debug.Log($"Added new vertex: '{newVertexInstance.name}' with display name '{newVertexDisplayName}'.");
+}
 
     public void OnAddEdgeButtonPressed()
     {
@@ -243,16 +301,15 @@ public class SieraHandler : MonoBehaviour
                 {
                     EdgeExportData edgeExport = new EdgeExportData
                     {
-                        fromVertexId = startVC.PersistentId, // Use the PersistentId from VertexController
-                        toVertexId = endVC.PersistentId,     // Use the PersistentId from VertexController
-                        edgeName = edge.lineRenderer.gameObject.name // Optional: for debugging
-                        // Populate other edge properties if you add them to EdgeExportData and your Edge class
+                        // fromVertexId = startVC.PersistentId, // OLD
+                        // toVertexId = endVC.PersistentId,     // OLD
+                        fromVertexId = startVC.GetVertexLabel(), // << NEW: Use "vX" name from start node
+                        toVertexId = endVC.GetVertexLabel(),     // << NEW: Use "vX" name from end node
+                        edgeName = edge.lineRenderer.gameObject.name
                     };
                     graphData.edges.Add(edgeExport);
-                }
-                else
-                {
-                    Debug.LogWarning($"Could not find VertexController on start or end node for edge '{edge.lineRenderer?.gameObject.name}'. Start: {edge.startNode?.name}, End: {edge.endNode?.name}", edge.lineRenderer);
+
+                    Debug.Log($"[EXPORT] Added Edge: From ID '{edgeExport.fromVertexId}' To ID '{edgeExport.toVertexId}' (Name: '{edgeExport.edgeName}')");
                 }
             }
             else
@@ -313,15 +370,15 @@ public class SieraHandler : MonoBehaviour
 
     private Dictionary<string, MatchObject> GraphVerticesToMatchObjects(GraphExportData graphData)
     {
-        // spravit text pole pre graph id a dat do graphData
-        string graphId = "1";
+        string graphId = "1"; // Consider making this dynamic or configurable
         Dictionary<string, MatchObject> tmpVertices = new Dictionary<string, MatchObject>();
         foreach (VertexExportData vertex in graphData.vertices)
         {
-            MatchObject v = new NeoNode(vertex.id, graphId);
-            //iconditions
-            ICondition conditions = DataRowsToICondition(vertex.rowsData);
-            v.attributes = conditions;
+            MatchObject v = new NeoNode(vertex.id, graphId); // Assuming NeoNode is one of your classes
+
+            // Pass vertex.rowsData (which is List<RowData>) directly
+            ICondition conditions = DataRowsToICondition(vertex.rowsData); // << MODIFIED: Pass the list
+            v.attributes = conditions; // Assuming MatchObject has an 'attributes' field of type ICondition
 
             tmpVertices[vertex.id] = v;
         }
@@ -329,10 +386,50 @@ public class SieraHandler : MonoBehaviour
     }
 
 
-    private ICondition DataRowsToICondition(object exportedConditions)
+    private ICondition DataRowsToICondition(List<RowData> rowsDataList) // Changed parameter type for clarity
+{
+    if (rowsDataList == null || rowsDataList.Count == 0)
     {
-        return null;
+        return null; // Or some default ICondition representing no conditions
     }
+
+    // Example: Iterate through the rows and use the new field names
+    // This is PSEUDOCODE for how you MIGHT build your ICondition.
+    // Your actual ICondition logic will depend on your Neo4j/Cypher query needs.
+    // For example, if ICondition is a list of strings or a complex object:
+
+    List<string> conditionStrings = new List<string>();
+    foreach (RowData row in rowsDataList)
+    {
+        // Access fields by their new names:
+        // row.tag
+        // row.OffsetX (though likely not part of a query condition directly)
+        // row.attribute
+        // row.operatorValue
+        // row.value
+        // row.SourceRowName
+        // row.logic
+
+        // Example of building a condition string (highly dependent on your ICondition structure)
+        string conditionPart = $"'{row.attribute}' {row.operatorValue} '{row.value}'";
+        if (row.logic != "INITIAL" && !string.IsNullOrEmpty(row.logic)) // Assuming "INITIAL" means no preceding logic
+        {
+            // You'd need to build a chain of conditions using row.logic ("AND", "OR")
+            // This can get complex and might involve a more structured ICondition object.
+            // For now, just an example:
+             conditionStrings.Add($"({row.logic} {conditionPart})"); // Simplified, real logic would be more complex
+        } else {
+            conditionStrings.Add($"({conditionPart})");
+        }
+        Debug.Log($"Processing Row for ICondition: Tag='{row.tag}', Attr='{row.attribute}', Op='{row.operatorValue}', Val='{row.value}', Logic='{row.logic}'");
+    }
+
+    // This is where you'd construct your actual ICondition object based on the processed row data.
+    // For now, returning null as per your original stub.
+    // Example if ICondition was just a single string:
+    // return new SimpleTextCondition(string.Join(" ", conditionStrings));
+    return null;
+}
 
     private List<MatchObject> ConnectMatchObjects(GraphExportData graphData, Dictionary<string, MatchObject> Vertices)
     {
