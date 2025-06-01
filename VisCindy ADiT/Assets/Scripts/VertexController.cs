@@ -12,6 +12,17 @@ public class VertexController : MonoBehaviour
     [Header("Vertex Configuration")]
     [Tooltip("Assign the TextMeshProUGUI component of the Label GameObject here (e.g., DropdownMenu/Canvas/Label).")]
     public TextMeshProUGUI vertexLabelTextComponent; // Assign this in the Inspector
+    [Header("Row Management Settings")]
+    [Tooltip("The Row Prefab to instantiate.")]
+    public GameObject rowPrefab; // Assign your modified Row Prefab (e.g., "VertexRowSubButons")
+    [Tooltip("The Transform under which new rows will be parented (e.g., a LayoutGroup GameObject).")]
+    public Transform rowsParentContainer; // Assign the parent for rows (e.g., "Row" object in image_278939.png which has a LayoutGroup)
+    [Tooltip("Horizontal increment for the 'Offset' child of new rows.")]
+    public float rowOffsetXIncrement = 30f;
+    [Tooltip("The X offset for the very first data row ('Row 0').")]
+    public float initialDataRowOffsetX = 0f;
+
+    private int _nextAvailableRowNumber = 0;
 
 
     void Awake()
@@ -32,8 +43,17 @@ public class VertexController : MonoBehaviour
         }
 
         // Initial population of rows
-        InitializeAndSortRows();
+        RowController.OnRequestNewRowAdd += HandleRowAddRequest; // Subscribe to event
+        InitializeAndSortRows(); // Finds existing rows
+        EnsureInitialDataRow(); 
     }
+    void OnDestroy()
+    {
+        RowController.OnRequestNewRowAdd -= HandleRowAddRequest; // Unsubscribe
+    }
+    
+    
+    
 
     /// <summary>
     /// Finds all RowController components in children of this GameObject (DropdownMenu)
@@ -41,76 +61,158 @@ public class VertexController : MonoBehaviour
     /// </summary>
     private void FindAndSortRows()
     {
-        // GetComponentsInChildren searches this GameObject and all its children.
-        _managedRows = new List<RowController>(GetComponentsInChildren<RowController>(true));
+        if (rowsParentContainer == null) {
+            Debug.LogError($"VertexController on '{gameObject.name}': Rows Parent Container is not assigned. Cannot find or manage rows.", this);
+            _managedRows = new List<RowController>(); // Ensure it's not null
+            return;
+        }
+        // Get RowControllers only from direct children of rowsParentContainer to avoid nested issues.
+        _managedRows = new List<RowController>();
+        for(int i = 0; i < rowsParentContainer.childCount; i++)
+        {
+            RowController rc = rowsParentContainer.GetChild(i).GetComponent<RowController>();
+            if(rc != null)
+            {
+                _managedRows.Add(rc);
+            }
+        }
 
         if (_managedRows.Count > 0)
         {
             _managedRows = _managedRows.OrderBy(row => row.GetOffsetX()).ToList();
         }
-        // The debug log for count will be in InitializeAndSortRows or RefreshManagedRows
     }
 
     private void InitializeAndSortRows()
     {
-        FindAndSortRows();
-        Debug.Log($"[VertexController Awake/Init] '{gameObject.name}' (ID: {PersistentId}) initialized/scanned. Found {_managedRows?.Count ?? 0} rows.", this);
+        FindAndSortRows(); // Populates _managedRows
+        // Determine the next available row number based on existing rows
+        _nextAvailableRowNumber = 0;
+        if (_managedRows != null) {
+            foreach (var rowCtrl in _managedRows)
+            {
+                if (rowCtrl.gameObject.name.StartsWith("Row "))
+                {
+                    if (int.TryParse(rowCtrl.gameObject.name.Substring(4), out int existingIndex))
+                    {
+                        if (existingIndex >= _nextAvailableRowNumber)
+                        {
+                            _nextAvailableRowNumber = existingIndex + 1;
+                        }
+                    }
+                }
+            }
+        }
+        Debug.Log($"[VertexController Awake/Init] '{gameObject.name}' (ID: {PersistentId}) initialized. Found {_managedRows?.Count ?? 0} rows. Next row number: {_nextAvailableRowNumber}.", this);
+    }
+    private void EnsureInitialDataRow()
+    {
+        // If after initialization, there are no rows (or only a dummy if that concept still applied differently)
+        // create the first "Row 0".
+        // Assuming GetAllRowsData (with startIndex = 0) would return actual data rows.
+        if (GetAllRowsData().Count == 0) // Check if any data rows exist
+        {
+            Debug.Log($"[VertexController EnsureInitialDataRow] No data rows found for '{gameObject.name}'. Creating 'Row 0'.", this);
+            AddNewRowInternal(null, "INITIAL", initialDataRowOffsetX);
+        }
+    }
+    
+    private void HandleRowAddRequest(RowController sourceRowController, string buttonType)
+    {
+        // Ensure the request is coming from a row managed by this VertexController instance
+        if (sourceRowController != null && _managedRows != null && _managedRows.Contains(sourceRowController))
+        {
+            float sourceOffsetX = sourceRowController.GetOffsetX();
+            AddNewRowInternal(sourceRowController, buttonType, sourceOffsetX + rowOffsetXIncrement);
+        }
+        else if (sourceRowController != null)
+        {
+            Debug.LogWarning($"VertexController for '{PersistentId}' received row add request from an unmanaged or unknown RowController: '{sourceRowController.gameObject.name}'. Request ignored.", this);
+        }
+    }
+    
+    private RowController AddNewRowInternal(RowController sourceRow, string triggerType, float targetOffsetX)
+    {
+        if (rowPrefab == null) { Debug.LogError("Row Prefab not assigned in VertexController!", this); return null; }
+        if (rowsParentContainer == null) { Debug.LogError("Rows Parent Container not assigned in VertexController!", this); return null; }
+
+        GameObject newRowGO = Instantiate(rowPrefab, rowsParentContainer);
+        RowController newRowCtrl = newRowGO.GetComponent<RowController>();
+
+        if (newRowCtrl != null)
+        {
+            string newRowName = $"Row {_nextAvailableRowNumber}";
+            string sourceRowName = sourceRow != null ? sourceRow.gameObject.name : "NONE";
+            newRowCtrl.ConfigureRow(newRowName, sourceRowName, triggerType, targetOffsetX);
+            
+            _nextAvailableRowNumber++; // Increment for the next one
+        }
+        else
+        {
+            Debug.LogError("Instantiated row prefab is missing RowController component!", newRowGO);
+            Destroy(newRowGO);
+            return null;
+        }
+
+        newRowGO.SetActive(true);
+        
+        // Re-scan and re-sort all rows. This also updates _managedRows.
+        RefreshManagedRows();
+        Debug.Log($"Added new row '{newRowCtrl.gameObject.name}' (Source: {newRowCtrl.sourceRowName}, Trigger: {newRowCtrl.triggerButtonType}, OffsetX: {newRowCtrl.GetOffsetX()}).", newRowCtrl);
+        return newRowCtrl;
     }
 
-    public void RefreshManagedRows()
+    public void RefreshManagedRows() 
     {
         Debug.Log($"[VertexController Refresh] '{gameObject.name}' (ID: {PersistentId}) is refreshing its managed rows...", this);
-        FindAndSortRows();
-        Debug.Log($"[VertexController Refresh] '{gameObject.name}' (ID: {PersistentId}) refreshed. Now managing {_managedRows?.Count ?? 0} rows.", this);
+        FindAndSortRows(); // Re-scans children of rowsParentContainer and sorts them
+        // Update _nextAvailableRowNumber based on the potentially new set of rows
+        // This is important if rows can also be deleted, or if Refresh is called for other reasons.
+        int maxIndexFound = -1;
+        if (_managedRows != null) {
+            foreach (var rowCtrl in _managedRows)
+            {
+                if (rowCtrl.gameObject.name.StartsWith("Row "))
+                {
+                    if (int.TryParse(rowCtrl.gameObject.name.Substring(4), out int existingIndex))
+                    {
+                        if (existingIndex > maxIndexFound)
+                        {
+                            maxIndexFound = existingIndex;
+                        }
+                    }
+                }
+            }
+        }
+        _nextAvailableRowNumber = maxIndexFound + 1;
+        Debug.Log($"[VertexController Refresh] '{gameObject.name}' (ID: {PersistentId}) refreshed. Now managing {_managedRows?.Count ?? 0} rows. Next row number is {_nextAvailableRowNumber}.", this);
     }
 
     public List<RowData> GetAllRowsData()
-{
-    if (_managedRows == null)
     {
-        Debug.LogWarning($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): _managedRows is null. Returning empty list.", this);
-        return new List<RowData>();
-    }
-
-    List<RowData> actualRowsData = new List<RowData>();
-
-    // The first row (_managedRows[0]) is considered a dummy and should be excluded.
-    // We iterate from the second row (index 1) onwards.
-    int startIndex = 1; // Start processing from the second row
-
-    if (_managedRows.Count == 0)
-    {
-        // No rows at all (not even a dummy)
-        return actualRowsData; // Returns empty list
-    }
-    
-    if (_managedRows.Count > 0 && _managedRows.Count <= startIndex) // Only dummy row(s) or fewer than startIndex implies no actual data rows
-    {
-        Debug.Log($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): Only dummy row(s) found (Total: {_managedRows.Count}, StartIndex for data: {startIndex}). Exporting 0 data rows.", this);
-        return actualRowsData; // Returns empty list
-    }
-    
-    // Log which row is being skipped if a dummy row exists.
-    // This log will only appear if there's at least one row to be considered dummy.
-    if (_managedRows.Count >= startIndex && startIndex > 0) {
-         Debug.Log($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): Attempting to skip first {startIndex} row(s) as dummy. Processing from index {startIndex}. First potential dummy: '{_managedRows[0].gameObject.name}'.", this);
-    }
-
-
-    for (int i = startIndex; i < _managedRows.Count; i++)
-    {
-        RowController rowController = _managedRows[i];
-        if (rowController != null)
+        if (_managedRows == null)
         {
-            actualRowsData.Add(rowController.GetRowData());
+            Debug.LogWarning($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): _managedRows is null. Attempting to initialize.", this);
+            FindAndSortRows(); // Try to initialize if null
+            if (_managedRows == null) return new List<RowData>(); // Still null, return empty
         }
+
+        List<RowData> actualRowsData = new List<RowData>();
+        int startIndex = 0; // << Process ALL rows found in _managedRows
+
+        for (int i = startIndex; i < _managedRows.Count; i++)
+        {
+            RowController rowController = _managedRows[i];
+            if (rowController != null)
+            {
+                actualRowsData.Add(rowController.GetRowData());
+            }
+        }
+        Debug.Log($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): Returning {actualRowsData.Count} data rows from {_managedRows.Count} managed rows.", this);
+        return actualRowsData;
     }
 
-    Debug.Log($"[VertexController GetAllRowsData] '{gameObject.name}' (ID: {PersistentId}): Processed {_managedRows.Count} managed rows, skipped {startIndex} dummy row(s), returning {actualRowsData.Count} data rows.", this);
-    return actualRowsData;
-}
-
-    private string GetVertexLabel()
+    public string GetVertexLabel()
     {
         if (vertexLabelTextComponent != null)
         {
@@ -150,22 +252,25 @@ public class VertexController : MonoBehaviour
     {
         if (_managedRows == null)
         {
-            Debug.LogWarning($"[VertexController GetExportData] '{gameObject.name}' (ID: {this.PersistentId}): _managedRows was null. Attempting to find and sort rows now...", this);
+            Debug.LogWarning($"[VertexController GetExportData] '{gameObject.name}' (ID using PersistentId for this log: {this.PersistentId}): _managedRows was null. Attempting to find and sort rows now...", this);
             FindAndSortRows();
         }
 
+        string currentVertexDisplayId = GetVertexLabel(); // This should be "v0", "v1", etc.
+
         VertexExportData data = new VertexExportData
         {
-            id = this.PersistentId,
-            vertexLabel = GetVertexLabel(), // << MODIFIED: Get the label
-            rowsData = GetAllRowsData()     // GetAllRowsData will now exclude the dummy row
+            // id = this.PersistentId,             // OLD: Using GUID
+            id = currentVertexDisplayId,           // << NEW: Using the "vX" display name as the ID
+            vertexLabel = currentVertexDisplayId,  // This was already correct
+            rowsData = GetAllRowsData()
         };
 
-        // ... (Your existing debug logs for rowsData count can remain) ...
-        Debug.Log($"[VertexController GetExportData for ID {this.PersistentId}] " +
+        // Update debug log to reflect the ID being used for export
+        Debug.Log($"[VertexController GetExportData for Export ID '{data.id}'] " +
                   $"Label: '{data.vertexLabel}', " +
                   $"Exporting with rowsData count: {(data.rowsData?.Count ?? -1)}. " +
-                  $"Internal _managedRows count (incl. dummy if present): {(_managedRows?.Count ?? -1)}.", this);
+                  $"Internal _managedRows count: {(_managedRows?.Count ?? -1)}.", this);
 
         return data;
     }
@@ -192,7 +297,11 @@ public class VertexController : MonoBehaviour
 
         for (int i = 0; i < allData.Count; i++)
         {
-            Debug.Log($"Row {i + 1} Data (from '{allData[i].RowObjectName}'): {allData[i].ToString()}", this);
+            // OLD LINE THAT CAUSED THE ERROR:
+            // Debug.Log($"Row {i + 1} Data (from '{allData[i].RowObjectName}'): {allData[i].ToString()}", this);
+
+            // CORRECTED LINE:
+            Debug.Log($"Row {i + 1} Data (from '{allData[i].tag}'): {allData[i].ToString()}", this);
         }
         Debug.Log($"--- End Data for Vertex: {gameObject.name} ---", this);
     }
