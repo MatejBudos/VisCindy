@@ -13,6 +13,10 @@ public class SieraHandler : MonoBehaviour
     public GameObject vertexPrefab;
     public GameObject vertexHolder;
     public GameObject edgeHolder;
+    
+    [Header("Graph Export Configuration")]
+    [Tooltip("Assign the TMP_InputField from your 'Limit' UI panel here.")]
+    public TMP_InputField limitValueInputField; 
 
     [Header("Line Properties")]
     public Material lineMaterial;
@@ -260,21 +264,20 @@ public class SieraHandler : MonoBehaviour
     /// <returns>A GraphExportData object representing the entire graph.</returns>
     public GraphExportData GetGraphDataForExport()
     {
+        // The constructor of GraphExportData already sets graphData.limit to "None" by default
         GraphExportData graphData = new GraphExportData();
 
-        // 1. Export Vertices
+        Debug.Log("--- [EXPORT] Starting GetGraphDataForExport ---");
+
+        // 1. Export Vertices (Your existing logic)
         if (vertexHolder != null)
         {
-            // Iterate through all child GameObjects of VertexHolder
-            // Assumes each direct child with a VertexController is a main vertex.
             for (int i = 0; i < vertexHolder.transform.childCount; i++)
             {
                 Transform vertexTransform = vertexHolder.transform.GetChild(i);
-                VertexController vc = vertexTransform.GetComponentInChildren<VertexController>(true); // Search in children, include inactive
+                VertexController vc = vertexTransform.GetComponentInChildren<VertexController>(true);
                 if (vc != null)
                 {
-                    // Debug.Log($"[EXPORT] Found VertexController on '{vc.gameObject.name}' (child of '{vertexTransform.name}'). ID: '{vc.PersistentId}'. Adding to export list.", vc);
-                    // The rest of vc.GetExportData() will be called...
                     graphData.vertices.Add(vc.GetExportData());
                 }
                 else
@@ -285,38 +288,60 @@ public class SieraHandler : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("VertexHolder not assigned in SieraHandler. Cannot export vertex data.", this);
+            Debug.LogWarning("[EXPORT] VertexHolder not assigned in SieraHandler. Cannot export vertex data.", this);
         }
+        Debug.Log($"[EXPORT] Vertices processed for export: {graphData.vertices.Count}");
 
-        // 2. Export Edges
-        // The 'activeEdges' list (List<Edge>) is already managed by SieraHandler
-        foreach (Edge edge in activeEdges)
+        // 2. Export Edges (Your existing logic)
+        if (activeEdges != null)
         {
-            if (edge.startNode != null && edge.endNode != null)
+            foreach (Edge edge in activeEdges)
             {
-                VertexController startVC = edge.startNode.GetComponentInChildren<VertexController>(true);
-                VertexController endVC = edge.endNode.GetComponentInChildren<VertexController>(true);
-
-                if (startVC != null && endVC != null)
+                // ... (your existing edge export logic using startVC.GetVertexLabel() and endVC.GetVertexLabel()) ...
+                 if (edge.startNode != null && edge.endNode != null)
                 {
-                    EdgeExportData edgeExport = new EdgeExportData
-                    {
-                        // fromVertexId = startVC.PersistentId, // OLD
-                        // toVertexId = endVC.PersistentId,     // OLD
-                        fromVertexId = startVC.GetVertexLabel(), // << NEW: Use "vX" name from start node
-                        toVertexId = endVC.GetVertexLabel(),     // << NEW: Use "vX" name from end node
-                        edgeName = edge.lineRenderer.gameObject.name
-                    };
-                    graphData.edges.Add(edgeExport);
+                    VertexController startVC = edge.startNode.GetComponentInChildren<VertexController>(true);
+                    VertexController endVC = edge.endNode.GetComponentInChildren<VertexController>(true);
 
-                    Debug.Log($"[EXPORT] Added Edge: From ID '{edgeExport.fromVertexId}' To ID '{edgeExport.toVertexId}' (Name: '{edgeExport.edgeName}')");
+                    if (startVC != null && endVC != null)
+                    {
+                        EdgeExportData edgeExport = new EdgeExportData
+                        {
+                            fromVertexId = startVC.GetVertexLabel(),
+                            toVertexId = endVC.GetVertexLabel(),
+                            edgeName = edge.lineRenderer.gameObject.name
+                        };
+                        graphData.edges.Add(edgeExport);
+                    }
+                    // ... else warning ...
                 }
+                // ... else warning ...
             }
-            else
-            {
-                Debug.LogWarning($"Edge '{edge.lineRenderer?.gameObject.name}' has a null startNode or endNode.", edge.lineRenderer);
-            }
+        } else {
+            Debug.LogWarning("[EXPORT] activeEdges list is null in SieraHandler.", this);
         }
+        Debug.Log($"[EXPORT] Edges processed for export: {graphData.edges.Count}");
+
+
+        // 3. Add the Limit value
+        if (limitValueInputField != null)
+        {
+            if (!string.IsNullOrEmpty(limitValueInputField.text))
+            {
+                graphData.limit = limitValueInputField.text;
+            }
+            // If the input field is empty, graphData.limit will remain "None" (its default from constructor)
+            // or you could explicitly set it to "" if you prefer that over "None" for empty.
+            // else { graphData.limit = ""; } // If you prefer empty string for empty input
+            Debug.Log($"[EXPORT] Limit value for export: '{graphData.limit}' (Read from input field: '{limitValueInputField.text}')");
+        }
+        else
+        {
+            Debug.LogWarning("[EXPORT] SieraHandler.limitValueInputField is NOT assigned in the Inspector! 'limit' will use default value ('None').", this);
+            // graphData.limit will be "None" as set in its constructor
+        }
+
+        Debug.Log("--- [EXPORT] Finished GetGraphDataForExport ---");
         return graphData;
     }
 

@@ -7,11 +7,13 @@ public class GraphExportData
 {
     public List<VertexExportData> vertices;
     public List<EdgeExportData> edges;
+    public string limit;
 
     public GraphExportData()
     {
         vertices = new List<VertexExportData>();
         edges = new List<EdgeExportData>();
+        limit = "None";
     }
 }
 
