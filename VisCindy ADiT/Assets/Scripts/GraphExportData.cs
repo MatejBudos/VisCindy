@@ -9,12 +9,15 @@ public class GraphExportData
     public List<EdgeExportData> edges;
     public string limit;
     public Apoc apoc;
+    public bool toggleAPOCState; 
 
     public GraphExportData()
     {
         vertices = new List<VertexExportData>();
         edges = new List<EdgeExportData>();
         limit = "None";
+        apoc = null;
+        toggleAPOCState = false;
     }
 }
 
@@ -41,6 +44,7 @@ public class EdgeExportData
     public string relationshipType;
     public string minValue;
     public string maxValue;
+    
 
     public EdgeExportData()
     {
