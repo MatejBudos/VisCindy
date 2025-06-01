@@ -6,7 +6,20 @@ using UnityEngine;
 
 public class ReadingJson
 {
-    private const double Tolerance = 0.01;
+
+    public static bool inTolerance(JArray edge, float[] values)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            if (Math.Abs((float)edge?[i] - values[i]) > Tolerance)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private const double Tolerance = 0.1;
     public static Dictionary<string,NodeObject> ReadJson(string jsonContent)
     {        
         Dictionary<string, NodeObject> nodesDictionary = new Dictionary<string, NodeObject>();
@@ -38,16 +51,14 @@ public class ReadingJson
                 var end = edge.Value?["end"] as JArray;
                 string nodeStart = " ";
                 string nodeEnd = " ";
+                
                 foreach (KeyValuePair<string,NodeObject> node in nodesDictionary)
                 {
-                    if(Math.Abs((float) start?[0] - node.Value.x) < Tolerance && 
-                        Math.Abs((float) start?[1] - node.Value.y) < Tolerance && 
-                        Math.Abs((float) start?[2] - node.Value.z) < Tolerance)
+                    float[] nodePosition = new float[] { node.Value.x, node.Value.y, node.Value.z };
+                    if(inTolerance(start,nodePosition))
                     {
                         nodeStart = node.Key;
-                    } else if (Math.Abs((float) end?[0] - node.Value.x) < Tolerance && 
-                                Math.Abs((float) end?[1] - node.Value.y) < Tolerance && 
-                                Math.Abs((float) end?[2] - node.Value.z) < Tolerance)
+                    } else if (inTolerance(end,nodePosition))
                     {
                         nodeEnd = node.Key;                     
                     }
