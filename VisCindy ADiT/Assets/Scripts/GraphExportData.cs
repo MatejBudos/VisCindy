@@ -8,6 +8,7 @@ public class GraphExportData
     public List<VertexExportData> vertices;
     public List<EdgeExportData> edges;
     public string limit;
+    public Apoc apoc;
 
     public GraphExportData()
     {

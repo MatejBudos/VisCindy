@@ -5,21 +5,21 @@ using System.Linq;
 public abstract class Traversal
 {
     //strart node treba definovat vzdy z nejakych matchnutych nodes
-    public MatchObject startNode{ get; set; }
-    public int maxLevel{ get; set; } = 10;
-    public int minLevel{ get; set; } = 1;
-    public string uniqueness{ get; set; } = "NODE_GLOBAL";
-    public string RelationshipFilter{get; set; }
+    public MatchObject startNode { get; set; }
+    public string maxLevel { get; set; } = "10";
+    public string minLevel { get; set; } = "1";
+    public string uniqueness { get; set; } = "NODE_GLOBAL";
+    public string RelationshipFilter { get; set; }
 
     public virtual string BuildQuery()
     {
         var config = new Dictionary<string, string>
         {
-            { "minLevel", minLevel.ToString() },
-            { "maxLevel", maxLevel.ToString() },
+            { "minLevel", minLevel },
+            { "maxLevel", maxLevel },
             { "uniqueness", $"\"{uniqueness}\"" }
         };
-        
+
         if (RelationshipFilter != null)
         {
             config["relationshipFilter"] = RelationshipFilter;
@@ -40,6 +40,7 @@ public abstract class Traversal
     //hook methods
     protected abstract string GetFunctionName();
     protected abstract Dictionary<string, string> GetCustomConfig();
+    public virtual void AddTerminatorNode(MatchObject node){}
 
     
 }
@@ -47,7 +48,7 @@ public abstract class Traversal
 public class ExpandConfigTraversal : Traversal
 {
     
-    public int Limit { get; set; } = 1;
+    public string Limit { get; set; } = "1";
     public  List<MatchObject> TerminatorNodesParam { get; set; } = new List<MatchObject>();
     
   
@@ -57,7 +58,7 @@ public class ExpandConfigTraversal : Traversal
     {
         var config = new Dictionary<string, string>
         {
-            { "limit", Limit.ToString() },
+            { "limit", Limit },
             { "terminatorNodes", '[' + string.Join(", ", TerminatorNodesParam.Select(n => n.NeoVar )) + ']' },
         };
        
@@ -80,7 +81,7 @@ public class ExpandConfigTraversal : Traversal
 
 public class ExpandToXJumpsTraversal : Traversal
 {
-    public ExpandToXJumpsTraversal setJumps( int jumps ){
+    public ExpandToXJumpsTraversal setJumps( string jumps ){
         this.maxLevel = jumps;
         this.minLevel = jumps;
         return this;
