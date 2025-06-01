@@ -1,4 +1,6 @@
 // In RowController.cs
+
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI; // For Button
@@ -83,6 +85,31 @@ public class RowController : MonoBehaviour
             SourceRowName = this.sourceRowName,
             logic = this.triggerButtonType      // Was TriggerButtonType
         };
+    }
+   
+    
+    public void PopulateAttributeDropdown(List<string> attributeOptions)
+    {
+        if (mainDropdown == null)
+        {
+            Debug.LogWarning($"Attribute Dropdown (mainDropdown) not assigned on RowController: '{gameObject.name}'. Cannot populate.", this);
+            return;
+        }
+
+        mainDropdown.ClearOptions(); // Clear existing options
+
+        if (attributeOptions != null && attributeOptions.Count > 0)
+        {
+            mainDropdown.AddOptions(attributeOptions);
+        }
+        else
+        {
+            // Optionally, add a default placeholder if no options are available
+            mainDropdown.AddOptions(new List<string> { "--No Attributes--" });
+        }
+        mainDropdown.value = 0; // Reset to the first item
+        mainDropdown.RefreshShownValue(); // Important to update the displayed text of the dropdown
+        // Debug.Log($"Populated Attribute dropdown on '{gameObject.name}' with {attributeOptions?.Count ?? 0} options.", this);
     }
 
     public void ConfigureRow(string name, string srcRowName, string btnType, float xOffset)

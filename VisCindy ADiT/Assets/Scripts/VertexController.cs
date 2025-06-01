@@ -43,13 +43,32 @@ public class VertexController : MonoBehaviour
         }
 
         // Initial population of rows
-        RowController.OnRequestNewRowAdd += HandleRowAddRequest; // Subscribe to event
-        InitializeAndSortRows(); // Finds existing rows
-        EnsureInitialDataRow(); 
+        RowController.OnRequestNewRowAdd += HandleRowAddRequest;
+        SieraHandler.OnGraphNodePropertiesAvailable += HandleGraphNodePropertiesAvailable; // << SUBSCRIBE to event
+        
+        InitializeAndSortRows();
+        EnsureInitialDataRow();
+        
     }
     void OnDestroy()
     {
-        RowController.OnRequestNewRowAdd -= HandleRowAddRequest; // Unsubscribe
+        RowController.OnRequestNewRowAdd -= HandleRowAddRequest;
+        SieraHandler.OnGraphNodePropertiesAvailable -= HandleGraphNodePropertiesAvailable; // << UNSUBSCRIBE from event
+    }
+    private void HandleGraphNodePropertiesAvailable()
+    {
+        Debug.Log($"[VertexController] '{gameObject.name}' (ID: {PersistentId}) received OnGraphNodePropertiesAvailable event. Updating attribute dropdowns for its rows.", this);
+        if (_managedRows != null && SieraHandler.Instance != null)
+        {
+            List<string> nodeProps = SieraHandler.Instance.LastFetchedNodeProperties;
+            foreach (RowController rowCtrl in _managedRows)
+            {
+                if (rowCtrl != null)
+                {
+                    rowCtrl.PopulateAttributeDropdown(nodeProps);
+                }
+            }
+        }
     }
     
     
@@ -107,12 +126,10 @@ public class VertexController : MonoBehaviour
     }
     private void EnsureInitialDataRow()
     {
-        // If after initialization, there are no rows (or only a dummy if that concept still applied differently)
-        // create the first "Row 0".
-        // Assuming GetAllRowsData (with startIndex = 0) would return actual data rows.
-        if (GetAllRowsData().Count == 0) // Check if any data rows exist
+        if (GetAllRowsData().Count == 0) 
         {
             Debug.Log($"[VertexController EnsureInitialDataRow] No data rows found for '{gameObject.name}'. Creating 'Row 0'.", this);
+            // AddNewRowInternal already attempts to populate the dropdown.
             AddNewRowInternal(null, "INITIAL", initialDataRowOffsetX);
         }
     }
@@ -144,6 +161,16 @@ public class VertexController : MonoBehaviour
             string newRowName = $"Row {_nextAvailableRowNumber}";
             string sourceRowName = sourceRow != null ? sourceRow.gameObject.name : "NONE";
             newRowCtrl.ConfigureRow(newRowName, sourceRowName, triggerType, targetOffsetX);
+            if (SieraHandler.Instance != null && SieraHandler.Instance.LastFetchedNodeProperties != null)
+            {
+                newRowCtrl.PopulateAttributeDropdown(SieraHandler.Instance.LastFetchedNodeProperties);
+            }
+            else
+            {
+                // Properties might not be fetched yet. The event HandleGraphNodePropertiesAvailable will cover it later.
+                // Or, provide a default empty state.
+                newRowCtrl.PopulateAttributeDropdown(new List<string>()); // Initialize with empty or placeholder
+            }
             
             _nextAvailableRowNumber++; // Increment for the next one
         }
@@ -162,6 +189,8 @@ public class VertexController : MonoBehaviour
         return newRowCtrl;
     }
 
+    
+    
     public void RefreshManagedRows() 
     {
         Debug.Log($"[VertexController Refresh] '{gameObject.name}' (ID: {PersistentId}) is refreshing its managed rows...", this);
