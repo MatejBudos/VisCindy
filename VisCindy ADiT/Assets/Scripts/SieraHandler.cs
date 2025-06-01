@@ -468,11 +468,10 @@ public class SieraHandler : MonoBehaviour
     {
         GraphExportData graphData = Instance.GetGraphDataForExport();
         string jsonPayload = JsonUtility.ToJson(graphData, true); // 'true' for pretty printing (easier to read)
-
+    
         Debug.Log("--- SERIALIZED GRAPH DATA (JSON) ---");
         Debug.Log(jsonPayload);
         Debug.Log("------------------------------------");
-
         //prvy krok do buildera
         var tmpVertices = GraphVerticesToMatchObjects(graphData);
         Dictionary<string,MatchObject> matchObjects = ConnectMatchObjects(graphData, tmpVertices);
@@ -553,6 +552,7 @@ public class SieraHandler : MonoBehaviour
     {
         string graphId = "1"; // Consider making this dynamic or configurable
         Dictionary<string, MatchObject> tmpVertices = new Dictionary<string, MatchObject>();
+
         foreach (VertexExportData vertex in graphData.vertices)
         {
             MatchObject v = new NeoNode(vertex.id, graphId); // Assuming NeoNode is one of your classes
