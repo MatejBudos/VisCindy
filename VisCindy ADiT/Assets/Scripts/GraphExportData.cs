@@ -7,11 +7,13 @@ public class GraphExportData
 {
     public List<VertexExportData> vertices;
     public List<EdgeExportData> edges;
+    public string limit;
 
     public GraphExportData()
     {
         vertices = new List<VertexExportData>();
         edges = new List<EdgeExportData>();
+        limit = "None";
     }
 }
 
@@ -34,5 +36,15 @@ public class EdgeExportData
     public string fromVertexId; // ID of the vertex this edge starts from
     public string toVertexId;   // ID of the vertex this edge ends at
     public string edgeName;     // Optional: Name of the edge GameObject itself for debugging/identification
-    // You can add more properties here if your edges have them (e.g., type, weight, parameters)
+    
+    public string relationshipType;
+    public string minValue;
+    public string maxValue;
+
+    public EdgeExportData()
+    {
+        relationshipType = "CONNECTED"; 
+        minValue = "None";
+        maxValue = "None";
+    }
 }
