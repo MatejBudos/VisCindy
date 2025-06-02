@@ -392,8 +392,8 @@ public class SieraHandler : MonoBehaviour
                     {
                         EdgeUIDataController.EdgeUIValues uiData = uiController.GetCurrentValues();
                         edgeExport.relationshipType = uiData.RelationshipType;
-                        edgeExport.minValue = uiData.MinValue;
-                        edgeExport.maxValue = uiData.MaxValue;
+                        edgeExport.minValue =  uiData.MinValue == "None" ? null : uiData.MinValue;
+                        edgeExport.maxValue = uiData.MaxValue == "None" ? null : uiData.MaxValue;
                         // Debug.Log($"[EXPORT] Edge '{edgeExport.edgeName}' UI Data: Rel='{uiData.RelationshipType}', Min='{uiData.MinValue}', Max='{uiData.MaxValue}'");
                     }
                     else
@@ -628,8 +628,10 @@ public class SieraHandler : MonoBehaviour
         HashSet<string> connectedNodes = new HashSet<string>();
         foreach (EdgeExportData edge in graphData.edges)
         {
-            //este attr etc pridat
-            MatchObject e = new NeoEdge(edge.edgeName);
+    
+            MatchObject e  = new NeoEdge(
+                edge.edgeName, edge.relationshipType, edge.minValue, edge.maxValue
+            );
 
             MatchObject fromNode = Vertices[edge.fromVertexId];
             MatchObject toNode = Vertices[edge.toVertexId];
