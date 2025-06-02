@@ -519,11 +519,18 @@ public class SieraHandler : MonoBehaviour
 
         Apoc apoc = graphData.apoc;
         CypherQueryBuilder cypherQueryBuilder = new NodeQueryBuilder();
-        if (wasApocUsed(apoc))
+
+    
+   
+
+        if (wasApocUsed(graphData.toggleAPOCState))
         {
             cypherQueryBuilder = new TraversalQueryBuilder();
             Traversal traversal = new ExpandConfigTraversal();
+           
             traversal.AddTerminatorNode(matchObjects[apoc.end]);
+            Debug.Log("END:" + traversal.TerminatorNodesParam.Count);
+
             if (apoc.TraversalType == "Spanning")
             {
                 traversal = new SpanningTreeTraversal();
@@ -534,13 +541,13 @@ public class SieraHandler : MonoBehaviour
             }
 
             traversal.startNode = matchObjects[apoc.start];
-            if (apoc.min != null || apoc.min != "")
+            if (apoc.min != null && apoc.min != "")
             {
                 traversal.minLevel = apoc.min;
             }
-            if (apoc.max != null || apoc.max != "")
+            if (apoc.max != null && apoc.max != "")
             {
-                traversal.maxLevel = apoc.min;
+                traversal.maxLevel = apoc.max;
             }
             traversal.uniqueness = apoc.unique;
             traversal.RelationshipFilter = apoc.relFilter;
@@ -554,9 +561,9 @@ public class SieraHandler : MonoBehaviour
 
 
     }
-    private bool wasApocUsed(Apoc apoc)
+    private bool wasApocUsed(bool apoc)
     {
-        return apoc?.start != null;
+        return apoc;
     }
 
 

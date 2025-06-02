@@ -6,10 +6,11 @@ public abstract class Traversal
 {
     //strart node treba definovat vzdy z nejakych matchnutych nodes
     public MatchObject startNode { get; set; }
-    public string maxLevel { get; set; } = "10";
-    public string minLevel { get; set; } = "1";
+    public string maxLevel = "10";
+    public string minLevel = "1";
     public string uniqueness { get; set; } = "NODE_GLOBAL";
     public string RelationshipFilter { get; set; }
+    public  List<MatchObject> TerminatorNodesParam { get; set; } = new List<MatchObject>();
 
     public virtual string BuildQuery()
     {
@@ -64,7 +65,7 @@ public class ExpandConfigTraversal : Traversal
        
         return config;
     }
-    public void AddTerminatorNode( MatchObject node ){
+    public override void AddTerminatorNode( MatchObject node ){
         TerminatorNodesParam.Add( node );
     }
     public void RemoveTerminatorNode( string neoVar ){
