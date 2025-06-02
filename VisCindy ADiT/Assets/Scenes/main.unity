@@ -2449,6 +2449,7 @@ MonoBehaviour:
   edgeHolder: {fileID: 306635437}
   baseApiUrl: http://127.0.0.1:5000/api/
   graphIdentifierForProperties: 1
+  graphSelectionDropdown: {fileID: 1727020762}
   limitValueInputField: {fileID: 1371470068}
   lineMaterial: {fileID: 2100000, guid: 6142787089f4cba45973e6bfa41d0a25, type: 2}
   lineWidth: 0.01
@@ -5829,8 +5830,8 @@ RectTransform:
   - {fileID: 1574375456}
   - {fileID: 1483909751}
   - {fileID: 2123922279}
-  - {fileID: 1727020761}
   - {fileID: 670281085}
+  - {fileID: 1727020761}
   m_Father: {fileID: 247862440}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -6494,7 +6495,7 @@ RectTransform:
   m_Children:
   - {fileID: 660453049}
   m_Father: {fileID: 613754923}
-  m_RootOrder: 15
+  m_RootOrder: 14
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
@@ -6544,7 +6545,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 670281087}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 247862438}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &670281087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18161,7 +18174,7 @@ GameObject:
   - component: {fileID: 1727020763}
   - component: {fileID: 1727020762}
   m_Layer: 0
-  m_Name: Dropdown
+  m_Name: GraphSelect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18183,7 +18196,7 @@ RectTransform:
   - {fileID: 572620059}
   - {fileID: 284430650}
   m_Father: {fileID: 613754923}
-  m_RootOrder: 14
+  m_RootOrder: 15
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
