@@ -527,9 +527,13 @@ public class SieraHandler : MonoBehaviour
         {
             cypherQueryBuilder = new TraversalQueryBuilder();
             Traversal traversal = new ExpandConfigTraversal();
-           
-            traversal.AddTerminatorNode(matchObjects[apoc.end]);
-            Debug.Log("END:" + traversal.TerminatorNodesParam.Count);
+
+
+
+            if (apoc.TraversalType == "Paths")
+            {
+                traversal.AddTerminatorNode(matchObjects[apoc.end]);
+            }
 
             if (apoc.TraversalType == "Spanning")
             {
@@ -557,8 +561,15 @@ public class SieraHandler : MonoBehaviour
         
         string query = cypherQueryBuilder.SetNeoNode(matchObjects.Values.ToList()).AddWhereCondition().Build();
         Debug.Log( query );
-        SendQuery( query, false );
-
+        QueryPayload qp = new QueryPayload(query,false);
+        if (DrawGraph.Instance != null)
+        {
+            DrawGraph.Instance.SetQueryPayload(qp);
+        }
+        else
+        {
+            Debug.LogError("DrawGraph.Instance nie je nájdená! QueryPayload nemohol byť odovzdaný.");
+        }
 
     }
     private bool wasApocUsed(bool apoc)
@@ -567,33 +578,61 @@ public class SieraHandler : MonoBehaviour
     }
 
 
-    private void SendQuery(string query, bool apoc)
+  public async Task SendQueryAsync(string query, bool apoc)
     {
-        /*
-        QueryPayload qp = new QueryPayload( query, apoc );
-        string json = JsonConvert.SerializeObject( qp );
-        Debug.Log(json);
-        using (UnityWebRequest request = new UnityWebRequest(apiUrl + "graph/query", "POST"))
-        {
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
+        QueryPayload qp = new QueryPayload(query,false);
+        string jsonPayload = JsonConvert.SerializeObject(qp);
 
-            yield return request.SendWebRequest();
+        // Ensure baseApiUrl ends with a slash for correct URL concatenation.
+        string trimmedBaseApiUrl = baseApiUrl.TrimEnd('/');
+        string endpoint = "layouter/query";
+        string apiUrl = $"{trimmedBaseApiUrl}/{endpoint}";
+
+
+        if (_sieraHttpClient == null)
+        {
+            Debug.LogError("[API] HttpClient is not initialized in SendQueryAsync. Ensure Awake() has run correctly.", this);
+            return;
+        }
+
+        Debug.Log($"[API] Sending query to: {apiUrl}\nPayload: {jsonPayload}");
+
+        try
+        {
+            HttpContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage responseMessage = await _sieraHttpClient.PostAsync(apiUrl, content);
             
-            if (request.result == UnityWebRequest.Result.Success)
+            // Ensure the response content is disposed after reading
+            using (HttpContent responseContent = responseMessage.Content)
             {
-                Debug.Log("POST successful: " + request.downloadHandler.text);
-                var _responseData1 = request.downloadHandler.text;
-            }
-            else
-            {
-                Debug.LogError("POST failed: " + request.error);
+                string responseBody = await responseContent.ReadAsStringAsync();
+
+                if (responseMessage.IsSuccessStatusCode)
+                {
+                    Debug.Log($"[API] Query sent successfully to {apiUrl}. Status: {responseMessage.StatusCode}.\nResponse: {responseBody}");
+                    // TODO: Process the responseBody if needed (e.g., parse JSON, update UI)
+                }
+                else
+                {
+                    Debug.LogError($"[API] Failed to send query to {apiUrl}. Status: {responseMessage.StatusCode} - {responseMessage.ReasonPhrase}\nResponse Body: {responseBody}");
+                }
             }
         }
-        */
-
+        catch (HttpRequestException e)
+        {
+            // This catches network errors (DNS resolution, connection refused, etc.)
+            Debug.LogError($"[API] HttpRequestException when sending query to {apiUrl}: {e.Message}", this);
+            if (e.InnerException != null)
+            {
+                Debug.LogError($"[API] Inner Exception: {e.InnerException.Message}", this);
+            }
+        }
+        catch (Exception ex)
+        {
+            // This catches other errors (e.g., issues during request setup, an unexpected null somewhere)
+            Debug.LogError($"[API] General exception in SendQueryAsync for {apiUrl}: {ex.ToString()}", this);
+        }
     }
 
     private Dictionary<string, MatchObject> GraphVerticesToMatchObjects(GraphExportData graphData)

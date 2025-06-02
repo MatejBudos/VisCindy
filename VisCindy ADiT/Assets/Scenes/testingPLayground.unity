@@ -4320,6 +4320,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 613754923}
     m_Modifications:
+    - target: {fileID: 3817064476100194964, guid: cf4f15cc6101e5a46927f2f8034d3718, type: 3}
+      propertyPath: m_Options.m_Options.Array.data[2].m_Text
+      value: Spanning
+      objectReference: {fileID: 0}
     - target: {fileID: 4785428130940072210, guid: cf4f15cc6101e5a46927f2f8034d3718, type: 3}
       propertyPath: m_Options.m_Options.Array.data[0].m_Text
       value: NODE_GLOBAL

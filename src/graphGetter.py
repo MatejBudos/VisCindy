@@ -36,6 +36,8 @@ class GraphGetter( Resource ):
     def post( self ):
         data = request.get_json()
         query = data["query"]
+        print("ANOO")
+        print(query)
         records = self.client.execute_query( query )
         return self.layoutRecords( records )
     
