@@ -674,9 +674,12 @@ public class SieraHandler : MonoBehaviour
         HashSet<string> connectedNodes = new HashSet<string>();
         foreach (EdgeExportData edge in graphData.edges)
         {
-    
+
+            // MatchObject e  = new NeoEdge(
+            //     edge.edgeName, edge.relationshipType, edge.minValue, edge.maxValue
+            // );
             MatchObject e  = new NeoEdge(
-                edge.edgeName, edge.relationshipType, edge.minValue, edge.maxValue
+                "e1", edge.relationshipType, edge.minValue, edge.maxValue
             );
 
             MatchObject fromNode = Vertices[edge.fromVertexId];
