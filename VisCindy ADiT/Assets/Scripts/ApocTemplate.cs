@@ -4,14 +4,12 @@ using System;
 using System.Linq;
 public abstract class Traversal
 {
-    //strart node treba definovat vzdy z nejakych matchnutych nodes
     public MatchObject startNode { get; set; }
     public string maxLevel = "10";
     public string minLevel = "1";
     public string uniqueness { get; set; } = "NODE_GLOBAL";
     public string RelationshipFilter { get; set; }
     public  List<MatchObject> TerminatorNodesParam { get; set; } = new List<MatchObject>();
-
     public virtual string BuildQuery()
     {
         var config = new Dictionary<string, string>
@@ -20,30 +18,22 @@ public abstract class Traversal
             { "maxLevel", maxLevel },
             { "uniqueness", $"\"{uniqueness}\"" }
         };
-
         if (RelationshipFilter != null)
         {
             config["relationshipFilter"] = RelationshipFilter;
         }
-
         foreach (var kvp in GetCustomConfig())
-        {
             config[kvp.Key] = kvp.Value;
-        }
-
+        
         string configString = string.Join(", ", config.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
-
         return
          "CALL apoc.path." + GetFunctionName() + "( " + startNode.NeoVar + ", {" + configString + "})\n" +
          "YIELD path";
-
     }
     //hook methods
     protected abstract string GetFunctionName();
     protected abstract Dictionary<string, string> GetCustomConfig();
     public virtual void AddTerminatorNode(MatchObject node){}
-
-    
 }
 
 public class ExpandConfigTraversal : Traversal
@@ -75,9 +65,7 @@ public class ExpandConfigTraversal : Traversal
                 TerminatorNodesParam.Remove( neoNode );
             }
         }
-
     }
-    
 }
 
 public class ExpandToXJumpsTraversal : Traversal
@@ -88,7 +76,6 @@ public class ExpandToXJumpsTraversal : Traversal
         return this;
     }
     protected override string GetFunctionName() => "expandConfig";
-
     protected override Dictionary<string, string> GetCustomConfig() => new(); // žiadne ďalšie
 }
 

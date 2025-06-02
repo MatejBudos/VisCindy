@@ -8,10 +8,7 @@ public abstract class MatchObject
     public ICondition attributes { get; set; }
     public string NeoVar { get; set; }
     public abstract string ToCypherMatchProperties();
-    public virtual void Add(MatchObject obj)
-    {
-        return;
-    }
+    public virtual void Add(MatchObject obj){}
     public virtual string NeoVarToString()
     {
         return NeoVar;
@@ -19,17 +16,13 @@ public abstract class MatchObject
     public virtual string ToCypherConditions()
     {
         return attributes != null ? attributes.ToQueryString(this.NeoVar) : "";
-
     }
     public MatchObject(string nVar, ICondition attr = null)
     {
         attributes = attr;
         NeoVar = nVar;
     }
-    public virtual bool hasAttributes()
-    {
-        return attributes != null && !attributes.isEmpty();
-    }
+    public virtual bool hasAttributes(){return attributes != null && !attributes.isEmpty();}
 }
 public class NeoNode : MatchObject
 {

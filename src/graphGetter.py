@@ -66,6 +66,6 @@ class GraphGetter( Resource ):
     def layoutRecords( self, records ):
         l = Layouter()
         graph = l.records_to_Igraph( records )
-        graph = l.layout( graph )
+        graph = l.layout( graph,"kk" )
         json_graph = l.export( graph )
         return json_graph
