@@ -252,7 +252,7 @@ public class VertexController : MonoBehaviour
         
         // Re-scan and re-sort all rows. This also updates _managedRows.
         RefreshManagedRows();
-        Debug.Log($"Added new row '{newRowCtrl.gameObject.name}' (Source: {newRowCtrl.sourceRowName}, Trigger: {newRowCtrl.triggerButtonType}, OffsetX: {newRowCtrl.GetOffsetX()}).", newRowCtrl);
+        Debug.Log($"Added new row '{newRowCtrl.gameObject.name}' (Source: {newRowCtrl.parent}, Trigger: {newRowCtrl.triggerButtonType}, OffsetX: {newRowCtrl.GetOffsetX()}).", newRowCtrl);
         return newRowCtrl;
     }
 

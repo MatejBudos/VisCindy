@@ -21,8 +21,8 @@ public class RowController : MonoBehaviour
     // public Button actionButton; // Old "+" button, can be removed if fully replaced
 
     // Data to be set by the creating controller (VertexController)
-    [HideInInspector] public string sourceRowName = "NONE";
-    [HideInInspector] public string triggerButtonType = "INITIAL"; // Default for the very first row
+    [HideInInspector] public string parent = "";
+    [HideInInspector] public string triggerButtonType = ""; // Default for the very first row
 
     // Static event to request a new row. Parameters: (sourceRowController, buttonTypeClicked)
     public static event System.Action<RowController, string> OnRequestNewRowAdd;
@@ -82,7 +82,7 @@ public class RowController : MonoBehaviour
 
             value = GetInputFieldValue2(),      // Was InputFieldValue2
 
-            SourceRowName = this.sourceRowName,
+            parent = this.parent,
             logic = this.triggerButtonType      // Was TriggerButtonType
         };
     }
@@ -115,7 +115,7 @@ public class RowController : MonoBehaviour
     public void ConfigureRow(string name, string srcRowName, string btnType, float xOffset)
     {
         gameObject.name = name;
-        this.sourceRowName = srcRowName;
+        this.parent = srcRowName;
         this.triggerButtonType = btnType;
         if (offsetObject != null)
         {
