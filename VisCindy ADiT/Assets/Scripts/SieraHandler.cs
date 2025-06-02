@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TMPro;
-
-using System;
 using UnityEngine.Networking;
 using System.Text; // Required for List
 using UnityEngine;
@@ -516,7 +514,7 @@ public class SieraHandler : MonoBehaviour
     }
     private bool wasApocUsed(Apoc apoc)
     {
-        return apoc.start != null;
+        return apoc?.start != null;
     }
 
 
@@ -560,6 +558,7 @@ public class SieraHandler : MonoBehaviour
 
             // Pass vertex.rowsData (which is List<RowData>) directly
             ICondition conditions = DataRowsToICondition(vertex.rowsData); // << MODIFIED: Pass the list
+            Debug.Log(conditions.ToQueryString(""));
             v.attributes = conditions; // Assuming MatchObject has an 'attributes' field of type ICondition
 
             tmpVertices[vertex.id] = v;
@@ -568,50 +567,18 @@ public class SieraHandler : MonoBehaviour
     }
 
 
-    private ICondition DataRowsToICondition(List<RowData> rowsDataList) // Changed parameter type for clarity
-{
-    if (rowsDataList == null || rowsDataList.Count == 0)
+    private ICondition DataRowsToICondition(List<RowData> rowsDataList)
     {
-        return null; // Or some default ICondition representing no conditions
-    }
-
-    // Example: Iterate through the rows and use the new field names
-    // This is PSEUDOCODE for how you MIGHT build your ICondition.
-    // Your actual ICondition logic will depend on your Neo4j/Cypher query needs.
-    // For example, if ICondition is a list of strings or a complex object:
-
-    List<string> conditionStrings = new List<string>();
-    foreach (RowData row in rowsDataList)
-    {
-        // Access fields by their new names:
-        // row.tag
-        // row.OffsetX (though likely not part of a query condition directly)
-        // row.attribute
-        // row.operatorValue
-        // row.value
-        // row.SourceRowName
-        // row.logic
-
-        // Example of building a condition string (highly dependent on your ICondition structure)
-        string conditionPart = $"'{row.attribute}' {row.operatorValue} '{row.value}'";
-        if (row.logic != "INITIAL" && !string.IsNullOrEmpty(row.logic)) // Assuming "INITIAL" means no preceding logic
+        if (rowsDataList == null || rowsDataList.Count == 0)
         {
-            // You'd need to build a chain of conditions using row.logic ("AND", "OR")
-            // This can get complex and might involve a more structured ICondition object.
-            // For now, just an example:
-             conditionStrings.Add($"({row.logic} {conditionPart})"); // Simplified, real logic would be more complex
-        } else {
-            conditionStrings.Add($"({conditionPart})");
+            return null;
         }
-        Debug.Log($"Processing Row for ICondition: Tag='{row.tag}', Attr='{row.attribute}', Op='{row.operatorValue}', Val='{row.value}', Logic='{row.logic}'");
-    }
+        Debug.Log(rowsDataList);
+        ICondition rootCondition = ConditionParser.LoadDataRows(rowsDataList);
 
-    // This is where you'd construct your actual ICondition object based on the processed row data.
-    // For now, returning null as per your original stub.
-    // Example if ICondition was just a single string:
-    // return new SimpleTextCondition(string.Join(" ", conditionStrings));
-    return null;
-}
+    
+        return rootCondition;
+    }
 
     private Dictionary<string, MatchObject> ConnectMatchObjects(GraphExportData graphData, Dictionary<string, MatchObject> Vertices)
     {
