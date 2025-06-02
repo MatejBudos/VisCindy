@@ -9,7 +9,8 @@ public class GraphExportData
     public List<EdgeExportData> edges;
     public string limit;
     public Apoc apoc;
-    public bool toggleAPOCState; 
+    public bool toggleAPOCState;
+    public string graphID;
 
     public GraphExportData()
     {
@@ -18,6 +19,7 @@ public class GraphExportData
         limit = "None";
         apoc = null;
         toggleAPOCState = false;
+        graphID = "1";
     }
 }
 
