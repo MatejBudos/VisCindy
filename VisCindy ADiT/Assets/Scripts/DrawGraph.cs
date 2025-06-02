@@ -51,7 +51,6 @@ public class DrawGraph : MonoBehaviour, ISingleton
     private const string LINE_POOL_KEY = "Lines";
      public static DrawGraph Instance { get; private set; } // Predpokladám, že ISingleton toto zabezpečuje
     private QueryPayload _receivedQueryPayload;
-    private bool newQueryFlag = false;
 
     private void Awake()
     {
@@ -71,49 +70,19 @@ public class DrawGraph : MonoBehaviour, ISingleton
     public void SetQueryPayload(QueryPayload payload)
     {
         _receivedQueryPayload = payload;
-        newQueryFlag = true;
         Debug.Log("QueryPayload úspešne prijatý v DrawGraph!");
         Debug.Log("Query: " + _receivedQueryPayload.query);
         Debug.Log("APOC used: " + _receivedQueryPayload.apoc);
 
-        
+        // Tu môžeš s _receivedQueryPayload ďalej pracovať
+        // Napríklad zavolať inú metódu, ktorá ho použije:
+        // ProcessGraphWithNewQuery();
     }
 
-    public IEnumerator SendPayload()
-    {
-        string json = JsonConvert.SerializeObject( _receivedQueryPayload );
-        Debug.Log(json);
-        using (UnityWebRequest request = new UnityWebRequest(apiUrl + "graph/query", "POST"))
-        {
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-
-            yield return request.SendWebRequest();
-            
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                Debug.Log("POST successful: " + request.downloadHandler.text);
-                _responseData1 = request.downloadHandler.text;
-            }
-            else
-            {
-                Debug.LogError("POST failed: " + request.error);
-            }
-        } 
-    }
     void Update()
     {
+        
 
-        if (newQueryFlag)
-        {
-            newQueryFlag = false;
-            StartCoroutine(makeGraphFromQuery());
-            Debug.Log("QueryPayload flag!");
-           
-            
-            }
         if (!_loadedFlag) return;
 
         foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
@@ -129,22 +98,7 @@ public class DrawGraph : MonoBehaviour, ISingleton
              
         }
     }
-    public IEnumerator makeGraphFromQuery() {
-        yield return StartCoroutine(SendPayload());
-        Debug.Log("QueryPayload Started coroutine!");
-        ResetGraph();
-        ResetPool();
-        Dictionary<string, NodeObject> forAdd = new Dictionary<string, NodeObject>();
-        foreach (var node in ReadingJson.ReadJson(_responseData1))
-        {
-            _nodesDictionary.Add(node.Key, node.Value);
-            forAdd.Add(node.Key, node.Value);
-            _counter++;
-        }
 
-        _loadedFlag = true;
-        VisualizeGraph(forAdd);
-    }
     public void CreateGraphFromAPI()
     {
         ResetGraph();
