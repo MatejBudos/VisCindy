@@ -114,7 +114,7 @@ public class TraversalQueryBuilder : CypherQueryBuilder
     {
         foreach (MatchObject node in MatchNodes)
         {
-            if (node?.attributes != null && !node.attributes.isEmpty())
+            if (node.hasAttributes())
                 finalWhereCondition.Add(node.ToCypherConditions());
         }
         return this;
