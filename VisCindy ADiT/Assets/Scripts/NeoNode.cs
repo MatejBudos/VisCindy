@@ -8,7 +8,7 @@ public abstract class MatchObject
     public ICondition attributes { get; set; }
     public string NeoVar { get; set; }
     public abstract string ToCypherMatchProperties();
-    public virtual void Add( MatchObject obj )
+    public virtual void Add(MatchObject obj)
     {
         return;
     }
@@ -25,7 +25,11 @@ public abstract class MatchObject
     {
         attributes = attr;
         NeoVar = nVar;
-    } 
+    }
+    public virtual bool hasAttributes()
+    {
+        return attributes != null && !attributes.isEmpty();
+    }
 }
 public class NeoNode : MatchObject
 {
@@ -119,6 +123,16 @@ public class MatchPattern : MatchObject
     {
         var el = elements.Select(e => e is NeoNode ? e.NeoVarToString() : null).Where(c => !string.IsNullOrWhiteSpace(c));
         return string.Join(", ", el);
+    }
+    public override bool hasAttributes()
+    {
+        foreach (var element in elements)
+        {
+            if (element.hasAttributes())
+                return true;
+            
+        }
+        return false;
     }
 
 }
