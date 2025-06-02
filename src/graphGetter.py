@@ -36,11 +36,29 @@ class GraphGetter( Resource ):
     def post( self ):
         data = request.get_json()
         query = data["query"]
-        print("ANOO")
-        print(query)
+        apoc = data["apoc"]
+        print(apoc)
+        
+
         records = self.client.execute_query( query )
+        #dat na true
+        print(records)
+        if not apoc:
+            return self.layoutApoc( records )
         return self.layoutRecords( records )
     
+    def layoutApoc( self, records ):
+        path = records[0]["path"]
+        neoIds = records[0]["NeoIds"]
+        result = []
+        for i, node in enumerate(neoIds):
+            result.append({ "id": i, "NeoId":neoIds[i],"edges": []})
+            if i < len(neoIds) - 1:
+                result[i]["edges"].append({"source":i, "target":i+1,"NeoId": i})
+        print(result)
+        return self.layoutRecords( result )
+
+
     def saveToSession( self, records, graphId ):
         session["records"] = records
         session["graphId"] = graphId
