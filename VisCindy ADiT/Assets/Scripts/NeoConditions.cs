@@ -114,6 +114,10 @@ public static class ConditionParser
         var memo = new Dictionary<string, string>();
         foreach (var cond in conditions)
         {
+            if (cond.value == "")
+            {
+                continue;
+            }
             if (cond.parent == "root")
             {
                 var finalTag = BuildNode(cond.tag, childrenMap, builder, memo);
