@@ -49,9 +49,40 @@ public class DrawGraph : MonoBehaviour, ISingleton
 
     private const string SPHERE_POOL_KEY = "Nodes";
     private const string LINE_POOL_KEY = "Lines";
-    
+     public static DrawGraph Instance { get; private set; } // Predpokladám, že ISingleton toto zabezpečuje
+    private QueryPayload _receivedQueryPayload;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            // DontDestroyOnLoad(gameObject); // Ak je to potrebné
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+        // ... tvoja ostatná Awake logika ...
+    }
+
+    // Metóda na prijatie QueryPayload
+    public void SetQueryPayload(QueryPayload payload)
+    {
+        _receivedQueryPayload = payload;
+        Debug.Log("QueryPayload úspešne prijatý v DrawGraph!");
+        Debug.Log("Query: " + _receivedQueryPayload.query);
+        Debug.Log("APOC used: " + _receivedQueryPayload.apoc);
+
+        // Tu môžeš s _receivedQueryPayload ďalej pracovať
+        // Napríklad zavolať inú metódu, ktorá ho použije:
+        // ProcessGraphWithNewQuery();
+    }
+
     void Update()
     {
+        
+
         if (!_loadedFlag) return;
 
         foreach (KeyValuePair<string, NodeObject> node in _nodesDictionary)
