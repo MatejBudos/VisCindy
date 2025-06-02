@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
+
+using UnityEngine;
+using UnityEngine.UI;
+
 public interface CypherQueryBuilder
 {
     public CypherQueryBuilder SetNeoNode(MatchObject node);
@@ -37,8 +41,11 @@ public class NodeQueryBuilder : CypherQueryBuilder
     {
         foreach (MatchObject node in MatchNodes)
         {
-            if (node?.attributes != null && !node.attributes.isEmpty())
+            if (node.hasAttributes())
+            {
                 finalWhereCondition.Add(node.ToCypherConditions());
+            }
+                
         }
         return this;
     }
