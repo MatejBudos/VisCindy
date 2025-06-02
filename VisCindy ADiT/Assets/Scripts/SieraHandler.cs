@@ -26,11 +26,15 @@ public class SieraHandler : MonoBehaviour
     [Tooltip("Base URL for the API. Example: http://127.0.0.1:5000/api/")]
     public string baseApiUrl = "http://127.0.0.1:5000/api/";
     [Tooltip("The identifier/name of the graph whose properties you want to fetch.")]
-    public string graphIdentifierForProperties = "myDefaultGraph";
+    public string graphIdentifierForProperties = "1";
     
     private static readonly CookieContainer SieraCookieContainer = new CookieContainer();
     private HttpClientHandler _sieraHttpClientHandler;
     private HttpClient _sieraHttpClient;
+    
+    [Header("Graph Selection for Properties")]
+    [Tooltip("Assign the TMP_Dropdown UI element used for selecting the graph whose properties will be fetched.")]
+    public TMP_Dropdown graphSelectionDropdown;
     
     [Header("Graph Export Configuration")]
     [Tooltip("Assign the TMP_InputField from your 'Limit' UI panel here.")]
@@ -204,6 +208,34 @@ public class SieraHandler : MonoBehaviour
         }
 
         Debug.Log($"Added new vertex: '{newVertexInstance.name}' with display name '{newVertexDisplayName}'.");
+    }
+    
+    public void SetGraphAndFetchProperties()
+    {
+        if (graphSelectionDropdown == null)
+        {
+            Debug.LogError("[SetGraph] Graph Selection Dropdown is not assigned in SieraHandler Inspector!", this);
+            return;
+        }
+
+        if (graphSelectionDropdown.options == null || graphSelectionDropdown.options.Count == 0)
+        {
+            Debug.LogError("[SetGraph] Graph Selection Dropdown has no options to select from!", graphSelectionDropdown);
+            return;
+        }
+
+        // Ensure the current value is valid within the options range
+        if (graphSelectionDropdown.value < 0 || graphSelectionDropdown.value >= graphSelectionDropdown.options.Count)
+        {
+            Debug.LogError($"[SetGraph] Graph Selection Dropdown has an invalid selected value: {graphSelectionDropdown.value}. Options count: {graphSelectionDropdown.options.Count}", graphSelectionDropdown);
+            return;
+        }
+
+        string selectedGraphIdentifier = graphSelectionDropdown.options[graphSelectionDropdown.value].text;
+        this.graphIdentifierForProperties = selectedGraphIdentifier; // Update the identifier
+
+        Debug.Log($"[SetGraph] 'Set Graph' button pressed. Selected graph identifier: '{selectedGraphIdentifier}'. Triggering property fetch.", this);
+        TriggerFetchGraphProperties(); // Now call the existing method to fetch data for the newly set graph
     }
 
     public void OnAddEdgeButtonPressed()
@@ -438,6 +470,11 @@ public class SieraHandler : MonoBehaviour
     {
         Debug.LogWarning("[EXPORT] SieraHandler.limitValueInputField is NOT assigned in the Inspector! 'limit' will use default value ('None').", this);
         // graphData.limit will be "None" as set in its constructor
+    }
+
+    if (graphSelectionDropdown != null)
+    {
+        graphData.graphID = graphSelectionDropdown.options[graphSelectionDropdown.value].text; // Use the selected graph identifier
     }
     
     // 4. Add APOC settings if toggle is on
