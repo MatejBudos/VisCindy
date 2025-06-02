@@ -89,10 +89,11 @@ class Layouter(Resource):
             graph.es[ index ]["NeoId"] = "null"
         return graph   
 
-    def records_to_Igraph( self, records : dict ) -> ig.Graph:
+    def records_to_Igraph( self, records : list ) -> ig.Graph:
         graph = ig.Graph()
         edges = []
         NeoEdgeIds = []
+        print(records)
         for record in records:
             vertex = str(record['id'])
             graph.add_vertex( vertex )
