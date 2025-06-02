@@ -13,6 +13,7 @@ using System;
 using UnityEngine.Networking;
 using System.Text; // Required for List
 using UnityEngine;
+using UnityEngine.UI;
 
 
 public class SieraHandler : MonoBehaviour
@@ -61,6 +62,14 @@ public class SieraHandler : MonoBehaviour
     [Tooltip("Small Z-offset for the edge UI relative to the edge line's Z plane (e.g., -0.01 to be slightly in front).")]
     public float edgeUI_Z_OffsetFromLine = -0.01f;
 
+    [Header("APOC Integration")]
+    [Tooltip("Assign the GameObject that has the ApocUIController script (e.g., your APOC panel).")]
+    public ApocUIController apocUIControllerRef;
+    [Tooltip("Assign the Toggle UI element that enables/disables APOC export.")]
+    public Toggle toggleAPOC;
+    
+    
+    
     void Awake()
     {
         if (Instance == null)
@@ -127,76 +136,77 @@ public class SieraHandler : MonoBehaviour
     }
 
     public void AddNewNodeObject()
-{
-    if (vertexPrefab == null)
     {
-        Debug.LogError("AddNewNodeObject: Vertex Prefab is not assigned in SieraHandler!", this);
-        return;
-    }
-    if (vertexHolder == null)
-    {
-        Debug.LogError("AddNewNodeObject: Vertex Holder is not assigned in SieraHandler!", this);
-        return;
-    }
-
-    GameObject newVertexInstance = Instantiate(vertexPrefab, vertexHolder.transform, false);
-    string newVertexDisplayName = "v" + nextVertexIdCounter; // e.g., "v0", "v1"
-
-    // 1. Set visual name on the vertex circle
-    Transform visualTextTransform = newVertexInstance.transform.Find("Text (TMP)");
-    if (visualTextTransform != null)
-    {
-        TextMeshProUGUI visualNameLabel = visualTextTransform.GetComponent<TextMeshProUGUI>();
-        if (visualNameLabel != null)
+        if (vertexPrefab == null)
         {
-            visualNameLabel.text = newVertexDisplayName; // Sets "v0", "v1" visually
+            Debug.LogError("AddNewNodeObject: Vertex Prefab is not assigned in SieraHandler!", this);
+            return;
+        }
+        if (vertexHolder == null)
+        {
+            Debug.LogError("AddNewNodeObject: Vertex Holder is not assigned in SieraHandler!", this);
+            return;
+        }
+
+        GameObject newVertexInstance = Instantiate(vertexPrefab, vertexHolder.transform, false);
+        string newVertexDisplayName = "v" + nextVertexIdCounter; // e.g., "v0", "v1"
+
+        // 1. Set visual name on the vertex circle
+        Transform visualTextTransform = newVertexInstance.transform.Find("Text (TMP)");
+        if (visualTextTransform != null)
+        {
+            TextMeshProUGUI visualNameLabel = visualTextTransform.GetComponent<TextMeshProUGUI>();
+            if (visualNameLabel != null)
+            {
+                visualNameLabel.text = newVertexDisplayName; // Sets "v0", "v1" visually
+            }
+            else
+            {
+                Debug.LogWarning($"AddNewNodeObject: Could not find TextMeshProUGUI component on 'Text (TMP)' child of instantiated vertex '{newVertexInstance.name}'.", newVertexInstance);
+            }
         }
         else
         {
-            Debug.LogWarning($"AddNewNodeObject: Could not find TextMeshProUGUI component on 'Text (TMP)' child of instantiated vertex '{newVertexInstance.name}'.", newVertexInstance);
+            Debug.LogWarning($"AddNewNodeObject: Could not find 'Text (TMP)' child GameObject in instantiated vertex prefab '{newVertexInstance.name}'. Cannot set visual vertex name.", newVertexInstance);
         }
-    }
-    else
-    {
-        Debug.LogWarning($"AddNewNodeObject: Could not find 'Text (TMP)' child GameObject in instantiated vertex prefab '{newVertexInstance.name}'. Cannot set visual vertex name.", newVertexInstance);
-    }
 
-    // 2. Optional: Set the GameObject's name for easier identification in the Hierarchy
-    newVertexInstance.name = $"Vertex_{newVertexDisplayName}";
+        // 2. Optional: Set the GameObject's name for easier identification in the Hierarchy
+        newVertexInstance.name = $"Vertex_{newVertexDisplayName}";
 
-    // 3. Update the label within the VertexController (for exported vertexLabel)
-    // This assumes VertexController is on a child (like DropdownMenu) and has 'vertexLabelTextComponent' assigned.
-    VertexController vc = newVertexInstance.GetComponentInChildren<VertexController>(true);
-    if (vc != null)
-    {
-        if (vc.vertexLabelTextComponent != null)
+        // 3. Update the label within the VertexController (for exported vertexLabel)
+        // This assumes VertexController is on a child (like DropdownMenu) and has 'vertexLabelTextComponent' assigned.
+        VertexController vc = newVertexInstance.GetComponentInChildren<VertexController>(true);
+        if (vc != null)
         {
-            vc.vertexLabelTextComponent.text = newVertexDisplayName; // THIS IS THE CRUCIAL LINE
+            if (vc.vertexLabelTextComponent != null)
+            {
+                vc.vertexLabelTextComponent.text = newVertexDisplayName; // THIS IS THE CRUCIAL LINE
+            }
+            else
+            {
+                // If not assigned, GetVertexLabel() might try a dynamic find, but explicit setting is safer.
+                Debug.LogWarning($"AddNewNodeObject: VertexController on '{newVertexInstance.name}' does not have 'vertexLabelTextComponent' assigned. Exported vertexLabel might not reflect '{newVertexDisplayName}' unless found dynamically.", vc);
+                // You could also directly set a field on vc if GetVertexLabel() reads from that instead of a TMP component.
+                // For example, if VertexController had `public void SetExportLabel(string label)`, you'd call that.
+                // But since GetVertexLabel() reads from vertexLabelTextComponent, updating that is the current way.
+            }
+            // Note: The PersistentId for the vertex (the GUID) is handled by VertexController.Awake()
         }
         else
         {
-            // If not assigned, GetVertexLabel() might try a dynamic find, but explicit setting is safer.
-            Debug.LogWarning($"AddNewNodeObject: VertexController on '{newVertexInstance.name}' does not have 'vertexLabelTextComponent' assigned. Exported vertexLabel might not reflect '{newVertexDisplayName}' unless found dynamically.", vc);
-            // You could also directly set a field on vc if GetVertexLabel() reads from that instead of a TMP component.
-            // For example, if VertexController had `public void SetExportLabel(string label)`, you'd call that.
-            // But since GetVertexLabel() reads from vertexLabelTextComponent, updating that is the current way.
+            Debug.LogWarning($"AddNewNodeObject: Could not find VertexController component in children of instantiated vertex '{newVertexInstance.name}'. Exported label will not be set here.", newVertexInstance);
         }
-        // Note: The PersistentId for the vertex (the GUID) is handled by VertexController.Awake()
-    }
-    else
-    {
-        Debug.LogWarning($"AddNewNodeObject: Could not find VertexController component in children of instantiated vertex '{newVertexInstance.name}'. Exported label will not be set here.", newVertexInstance);
-    }
+        
 
-    nextVertexIdCounter++; // Increment for the next vertex
+        nextVertexIdCounter++; // Increment for the next vertex
 
-    if (!newVertexInstance.activeSelf)
-    {
-        newVertexInstance.SetActive(true);
+        if (!newVertexInstance.activeSelf)
+        {
+            newVertexInstance.SetActive(true);
+        }
+
+        Debug.Log($"Added new vertex: '{newVertexInstance.name}' with display name '{newVertexDisplayName}'.");
     }
-
-    Debug.Log($"Added new vertex: '{newVertexInstance.name}' with display name '{newVertexDisplayName}'.");
-}
 
     public void OnAddEdgeButtonPressed()
     {
@@ -430,6 +440,38 @@ public class SieraHandler : MonoBehaviour
     {
         Debug.LogWarning("[EXPORT] SieraHandler.limitValueInputField is NOT assigned in the Inspector! 'limit' will use default value ('None').", this);
         // graphData.limit will be "None" as set in its constructor
+    }
+    
+    // 4. Add APOC settings if toggle is on
+    if (toggleAPOC != null)
+    {
+        graphData.toggleAPOCState = toggleAPOC.isOn; // << SETTING THE TOGGLE STATE
+        Debug.Log($"[EXPORT] APOC Toggle State: {graphData.toggleAPOCState}");
+
+        if (graphData.toggleAPOCState) // Check the state we just set
+        {
+            if (apocUIControllerRef != null)
+            {
+                graphData.apoc = apocUIControllerRef.GetApocSettings();
+                Debug.Log("[EXPORT] APOC toggle is ON. APOC settings included in export.");
+            }
+            else
+            {
+                Debug.LogWarning("[EXPORT] APOC toggle is ON, but ApocUIControllerRef is not assigned in SieraHandler. APOC settings will be null.");
+                graphData.apoc = null;
+            }
+        }
+        else
+        {
+            Debug.Log("[EXPORT] APOC toggle is OFF. APOC settings will be null in export.");
+            graphData.apoc = null; // Ensure APOC data is null if toggle is off
+        }
+    }
+    else
+    {
+        Debug.LogWarning("[EXPORT] SieraHandler.toggleAPOC is NOT assigned in the Inspector! 'toggleAPOCState' will be default (false) and APOC settings will be null.", this);
+        graphData.toggleAPOCState = false; // Default if toggle itself is not assigned
+        graphData.apoc = null;
     }
 
     Debug.Log("--- [EXPORT] Finished GetGraphDataForExport ---");

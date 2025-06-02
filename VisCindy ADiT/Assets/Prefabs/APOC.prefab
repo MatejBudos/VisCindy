@@ -1403,7 +1403,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
+  m_PresetInfoIsWorld: 1
 --- !u!114 &6192341583312666226
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3414,6 +3414,7 @@ GameObject:
   - component: {fileID: 5244590582409035650}
   - component: {fileID: 5244590582409035651}
   - component: {fileID: 5244590582409035648}
+  - component: {fileID: 3092603011426265018}
   m_Layer: 0
   m_Name: APOC
   m_TagString: Untagged
@@ -3537,6 +3538,26 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
+--- !u!114 &3092603011426265018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5244590582409035646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88c84c74a0f09ae49b6fe26e3fba625f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  traversalTypeDropdown: {fileID: 3817064476100194964}
+  minInputField: {fileID: 3491247050058457031}
+  maxInputField: {fileID: 1275125145003105608}
+  startNodeInputField: {fileID: 490279615190619284}
+  endNodeInputField: {fileID: 5081650301462240602}
+  uniqueDropdown: {fileID: 4785428130940072210}
+  relFilterInputField: {fileID: 1229944847307129702}
+  limitInputField: {fileID: 5056042149309020456}
 --- !u!1 &5244590583164734785
 GameObject:
   m_ObjectHideFlags: 0
@@ -5213,7 +5234,7 @@ GameObject:
   - component: {fileID: 7066687141962098299}
   - component: {fileID: 3817064476100194964}
   m_Layer: 0
-  m_Name: RelType
+  m_Name: TraversalType
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
