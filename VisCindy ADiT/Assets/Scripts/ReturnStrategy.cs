@@ -55,18 +55,8 @@ public class NodeReturnStrategy : QueryReturnStrategy
 {
     public ReturnObject ReturnStrategy(List<MatchObject> nodes)
     {
-      
-        string result = @"
-            WITH
-            Id(v0) AS id,
-            elementId(v0) as NeoId,
-            collect(CASE
-                WHEN v1 IS NOT NULL THEN {source: Id(v0), target: Id(v1), relationship: type(e1), NeoId: elementId(e1)}
-                ELSE null
-            END) AS edges
-          RETURN
-            id, NeoId,
-            [edge IN edges WHERE edge IS NOT NULL] AS edges;";
+        
+        string result = "RETURN " + string.Join( ", ", nodes.Select( n => n.NeoVarToString() ) );
         
         return new ReturnObject( result );
     }

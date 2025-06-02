@@ -121,8 +121,7 @@ public class MatchPattern : MatchObject
     }
     public override string NeoVarToString()
     {
-
-        var el = elements.Select(e => e is NeoNode ? e.NeoVarToString() : "e1").Where(c => !string.IsNullOrWhiteSpace(c));
+        var el = elements.Select(e => e is NeoNode ? e.NeoVarToString() : null).Where(c => !string.IsNullOrWhiteSpace(c));
         return string.Join(", ", el);
     }
     public override bool hasAttributes()
